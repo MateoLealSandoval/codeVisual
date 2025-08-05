@@ -1,0 +1,6 @@
+/postgres
+/data
+/uploads
+/public
+/private
+.env
