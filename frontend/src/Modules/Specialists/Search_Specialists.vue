@@ -1,13 +1,14 @@
 <script lang="ts">
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import type { Specialist_dto, citys_dto, PaginationDto, filters_profesional } from '@/Models/Profesional/profesional.dto';
-import { useSearchProfesionalStorage } from '@/store/search_profesional.storage';
-import CardSpecialist from '@/common/CardSpecialist.vue';
-import { SpecialistDataMock } from '@/data/Specialist.data';
-import type { Specialist } from '@/interfaces/Specialist';
+import type { Specialist_dto, citys_dto, filters_profesional } from '@/dto/professional';
+import type { PaginationDto } from '@/dto/Pagination.dto';
+import { useSearchProfesionalStorage } from '@/store';
+import CardSpecialist from '@/Modules/Specialists/CardSpecialist.vue';
+import SpecialistDataMock from '@/Modules/Specialists/Mocks/SpecialistDataMock.json';
+import type { Specialist } from '@/Modules/Specialists/Specialist';
 import Swal from 'sweetalert2';
-import { getDepartmentFromCoords } from '@/services/geolocation.service';
+import { getDepartmentFromCoords } from '@/utils/geocoding';
 
 export default {
     name: 'Search_Specialists',
@@ -42,6 +43,9 @@ export default {
                 panelSearch: false, // Nuevo panel para búsqueda móvil
             },
         });
+
+        // Estado de carga
+        const isLoading = ref(true);
 
         // Datos reactivos del store
         const specialties = computed(() => professionalStore.specialties);
@@ -133,20 +137,28 @@ export default {
 
         // Función para cargar datos
         const load_data = async () => {
-            const filters: filters_profesional = {
-                specialitsFilters: state.select_specialties,
-                cityFilters: state.select_citys,
-                ...(state.name?.trim() ? { name: state.name } : {})
-            }
-            await professionalStore.load_specialists(state.pagination, filters)
-            if (list_professionals.value.length === 0) {
-                await Swal.fire({
-                    title: 'No encontramos especialistas ',
-                    text: 'No encontramos un especialista con todos los filtros, regresa y vuelve a buscar un especialista que se ajuste a lo que estas buscando.',
-                    icon: 'warning',
-                    confirmButtonText: 'Aceptar',
-                    confirmButtonColor: 'var(--blue-1)',
-                });
+            try {
+                isLoading.value = true;
+                const filters: filters_profesional = {
+                    specialitsFilters: state.select_specialties,
+                    cityFilters: state.select_citys,
+                    ...(state.name?.trim() ? { name: state.name } : {})
+                }
+                await professionalStore.load_specialists(state.pagination, filters)
+                
+                if (list_professionals.value.length === 0) {
+                    await Swal.fire({
+                        title: 'No encontramos especialistas ',
+                        text: 'No encontramos un especialista con todos los filtros, regresa y vuelve a buscar un especialista que se ajuste a lo que estas buscando.',
+                        icon: 'warning',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: 'var(--blue-1)',
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando especialistas:', error);
+            } finally {
+                isLoading.value = false;
             }
         }
 
@@ -191,6 +203,7 @@ export default {
             specialties,
             citys,
             clearFilters,
+            isLoading,
             items: SpecialistDataMock as Specialist[],
             filterSpecialty: [] as string[],
             filterLocation: [] as string[],
@@ -630,13 +643,41 @@ export default {
 
                 <!-- Contenido principal -->
                 <div class="w-full lg:w-7/10">
-                    <h1 v-if="list_professionals.length" class="font-poppins mx-10 text-base text-center sm:text-left">
+                    <!-- Indicador de carga -->
+                    <div v-if="isLoading" class="font-poppins mx-10 text-base text-center sm:text-left">
+                        <div class="flex items-center justify-center sm:justify-start">
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--blue-1)] mr-2"></div>
+                            Buscando especialistas...
+                        </div>
+                    </div>
+                    
+                    <!-- Contador de resultados -->
+                    <h1 v-else-if="list_professionals.length > 0" class="font-poppins mx-10 text-base text-center sm:text-left">
                         {{ `${list_professionals.length} Especialistas disponibles para ti` }}
                     </h1>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <h1 v-else class="font-poppins mx-10 text-base text-center sm:text-left text-gray-500">
+                        No se encontraron especialistas con los filtros aplicados
+                    </h1>
+                    
+                    <!-- Lista de profesionales -->
                     <div class="flex flex-col flex-wrap justify-center">
                         <div v-for="(option, index) in list_professionals" :key="index"
                             class="flex flex-col items-center p-0 md:p-4 rounded-lg">
                             <CardSpecialist :user_data="option" class="mb-3" />
+                        </div>
+                        
+                        <!-- Mostrar datos de ejemplo si no hay datos del servidor y no está cargando -->
+                        <div v-if="!isLoading && list_professionals.length === 0 && items.length > 0" 
+                             class="flex flex-col flex-wrap justify-center">
+                            <div class="w-full text-center mb-4">
+                                <p class="text-gray-500 text-sm">Mostrando datos de ejemplo:</p>
+                            </div>
+                            <div v-for="(option, index) in items.slice(0, 3)" :key="`example-${index}`"
+                                class="flex flex-col items-center p-0 md:p-4 rounded-lg">
+                                <CardSpecialist :user_data="option" class="mb-3" />
+                            </div>
                         </div>
                     </div>
                 </div>
