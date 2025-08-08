@@ -112,7 +112,14 @@ export default {
 
             reader.readAsDataURL(file);
         },
-        submitForm(): void {
+        async submitForm(): Promise<void> {
+            // 🚨 NUEVA VALIDACIÓN: Mostrar popup antes de crear cuenta
+            const shouldProceed = await this.showPaymentWarningPopup();
+            if (!shouldProceed) {
+                return; // Salir si el usuario fue a planes
+            }
+
+            // TODO EL CÓDIGO ORIGINAL SIN CAMBIOS:
             try {
                 const formData = new FormData();
                 const frontFile = this.base64ToFile(this.register.frontImage, 'front.png');
@@ -196,7 +203,56 @@ export default {
                 this.panels[key as keyof typeof this.panels] = key === panelName;
             });
         },
+
+        // 🆕 NUEVO MÉTODO: Popup para crear cuenta
+        async showPaymentWarningPopup() {
+            const result = await Swal.fire({
+                title: '¡Atención!',
+                html: 'Para poder crear el perfil, debes adquirir previamente un plan con DocVisual, accede <a href="/planes" style="color: var(--blue-1); text-decoration: underline; font-weight: bold;">AQUÍ</a> a los planes.',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--blue-1)',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ir a planes',
+                cancelButtonText: 'Continuar sin plan',
+                reverseButtons: true
+            });
+
+            if (result.isConfirmed) {
+                this.$router.push('/planes');
+                return false; // No continuar con el registro
+            }
+            
+            return true; // Continuar con el registro
+        },
+
+        // 🆕 NUEVO MÉTODO: Popup para login sin pago
+        async showPaymentRequiredPopup() {
+            const result = await Swal.fire({
+                title: 'Acceso Restringido',
+                html: 'Tu cuenta no tiene un plan activo. Para acceder necesitas adquirir uno de nuestros planes. <a href="/planes" style="color: var(--blue-1); text-decoration: underline; font-weight: bold;">Ir a planes</a>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--blue-1)',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Adquirir Plan',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            });
+
+            if (result.isConfirmed) {
+                this.$router.push('/planes');
+            }
+        },
+
         async registerComponent() {
+        // 🚨 NUEVA VALIDACIÓN: Mostrar popup antes de registrarse
+            const shouldProceed = await this.showPaymentWarningPopup();
+            if (!shouldProceed) {
+                return; // Salir si el usuario fue a planes
+            }
+
+            // TODO EL CÓDIGO ORIGINAL SIN CAMBIOS:
             if (this.isFormValid) {
                 const newRegister: registerPartnerDto = {
                     email: this.register.gmail,
@@ -209,7 +265,7 @@ export default {
                 }
                 try {
                     await this.store.registerParthner(newRegister);
-                    toast.success("(Gracias por se parte de Docvisual, tu perfil entra en aprobacion y validación, en 24 a 48 horas máximo, tendrás acceso a tu cuenta", {
+                    toast.success("(Gracias por se parte de Docvisual, tu perfil entra en aprobacion y validación, en 24 a 48 horas máximo, tendrás acceso a tu cuenta", {
                         position: 'top-center',
                         autoClose: 2000
                     });
@@ -222,11 +278,8 @@ export default {
 
             } else {
                 throw new Error("Faltan datos o no son válidos");
-
-
             }
         },
-
 
         async loginComponent() {
             const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue-1').trim();
@@ -244,6 +297,19 @@ export default {
                         confirmButtonText: 'OK'
                     });
                 } catch (error: any) {
+                // 🚨 NUEVA VALIDACIÓN: Verificar si es error de pago
+                    if (error.message && (
+                        error.message.includes('plan') || 
+                        error.message.includes('pago') || 
+                        error.message.includes('suscripción') ||
+                        error.message.includes('payment')
+                    )) {
+                        // Mostrar mensaje específico para falta de pago
+                        await this.showPaymentRequiredPopup();
+                        return;
+                    }
+                    
+                    // CÓDIGO ORIGINAL PARA OTROS ERRORES:
                     await Swal.fire({
                         icon: 'error',
                         title: 'Error',
@@ -624,14 +690,6 @@ export default {
                             </label>
 
                         </div>
-
-
-
-
-
-
-
-
 
                         <div class="w-full">
                             <h1 class="font-bold" v-if="!passwordValid.allValid">Elige una que no hayas usado y recuerda
