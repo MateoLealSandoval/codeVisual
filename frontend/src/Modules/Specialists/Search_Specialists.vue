@@ -276,27 +276,6 @@ export default {
                     normalizeText(item.name).includes(normalizedSearch)
                 );
             }
-            
-            // Comentar filtros que no son compatibles con user_professional_search_dto
-            /*
-            if (this.filterSpecialty.length > 0) {
-                itemsFull = itemsFull.filter(item =>
-                    item.specialist.some(specialty => this.filterSpecialty.includes(specialty))
-                );
-            }
-
-            if (this.state.filterService.length > 0) {
-                itemsFull = itemsFull.filter(item =>
-                    item.services.some(service => this.state.filterService.includes(service))
-                );
-            }
-
-            if (this.filterLocation.length > 0) {
-                itemsFull = itemsFull.filter(item =>
-                    item.locals.some(local => this.filterLocation.includes(local.departament))
-                );
-            }
-            */
 
             this.data = itemsFull;
         },
@@ -333,9 +312,8 @@ export default {
             <h2 class="w-full text-center font-poppins mt-2 mb-9 text-xl md:text-2xl font-bold">Agenda tu cita con
                 alguno de nuestros profesionales en:</h2>
 
-            <!-- Filtros móviles y tablet -->
+            <!-- Card de búsqueda para móvil -->
             <div class="lg:hidden w-full">
-                <!-- Card de búsqueda por nombre para móvil - IGUAL AL DESKTOP -->
                 <div class="mx-4 mb-6 bg-white flex-col rounded-2xl shadow-lg">
                     <div class="px-8 py-6">
                         <!-- Búsqueda por nombre -->
@@ -386,7 +364,6 @@ export default {
                             <Transition name="fade">
                                 <div v-if="state.panels.panelService" class="w-full max-h-40 overflow-y-auto">
                                     <p class="text-gray-600 mb-4">Selecciona los servicios que necesitas:</p>
-                                    <!-- Aquí irían las opciones de servicios cuando estén disponibles -->
                                 </div>
                             </Transition>
                         </div>
@@ -453,125 +430,13 @@ export default {
                     <h1 class="font-poppins text-base mx-2 font-semibold">Pediátrica</h1>
                 </div>
             </div>
-
-            <!-- MODAL DE BÚSQUEDA PARA MÓVIL - CONTIENE TODO EL SIDEBAR -->
-            <div v-if="state.panels.panelSearch"
-                class="fixed inset-0 z-50 bg-black/50 flex justify-center items-center sm:flex md:flex lg:hidden"
-                @click.self="togglePanel('panelSearch')">
-                <div class="bg-white w-11/12 max-w-md min-h-[80vh] max-h-[80vh] rounded-2xl shadow-lg flex flex-col">
-                    <!-- Encabezado -->
-                    <div class="w-full">
-                        <div class="w-full flex items-center px-2">
-                            <button @click="togglePanel('panelSearch')"
-                                class="p-2 text-lg font-poppins font-bold cursor-pointer">X</button>
-                            <h3 class="flex-1 text-center font-poppins">Buscar por nombre</h3>
-                            <h3 class="p-2 font-poppins cursor-pointer" style="color: var(--blue-1);"
-                                @click="clearFilters">Limpiar</h3>
-                        </div>
-                        <hr class="text-gray-200" />
-                    </div>
-
-                    <!-- Contenido del modal - EXACTO AL SIDEBAR DESKTOP -->
-                    <div class="flex-1 overflow-y-auto px-4">
-                        <!-- Búsqueda por nombre -->
-                        <div class="w-full">
-                            <h1 class="mb-2 font-poppins mx-2 mt-6 font-semibold">Buscar por nombre</h1>
-                            <div class="relative flex items-center w-full">
-                                <svg class="absolute left-3 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M15.7955 15.8111L21 21M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z"
-                                        stroke="#000000" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" />
-                                </svg>
-                                <input type="text" placeholder="Buscar especialistas..." v-model="state.name"
-                                    class="w-full pl-10 pr-3 py-2 mx-2 rounded-full border border-gray-400 focus:ring-2 focus:ring-blue-500 font-poppins my-6" />
-                            </div>
-                        </div>
-
-                        <!-- Filtros de especialidad -->
-                        <div class="w-full">
-                            <div class="w-full flex items-center px-2" @click="togglePanel('panelSpecialty')">
-                                <h1 class="text-base font-medium font-poppins max-w-[80%] mb-3">Especialidad</h1>
-                                <img src="@/assets/svg/arrow.svg" alt="Icono"
-                                    class="w-4 h-4 ml-auto transform transition-transform duration-300"
-                                    :class="state.panels.panelSpecialty ? 'rotate-180' : ''" />
-                            </div>
-                            <Transition name="fade">
-                                <div v-if="state.panels.panelSpecialty" class="w-full max-h-40 overflow-y-auto">
-                                    <div v-for="(option, index) in specialties" :key="index" class="flex w-full my-2"
-                                        @click="addOrRemoveSpecialty(option)">
-                                        <input type="checkbox" :id="'mobile-checkbox-' + index"
-                                            :checked="isSpecialistSelected(option)" :value="option"
-                                            class="w-5 h-5 mx-2 colorvar pointer-events-none accent-[var(--blue-1)]">
-                                        <h1 class="mt-auto cursor-pointer">{{ option.name }}</h1>
-                                    </div>
-                                </div>
-                            </Transition>
-                        </div>
-
-                        <!-- Filtros de servicio -->
-                        <div class="w-full">
-                            <div class="w-full flex items-center px-2" @click="togglePanel('panelService')">
-                                <h1 class="text-base font-medium font-poppins max-w-[80%] mb-3">Servicio</h1>
-                                <img src="@/assets/svg/arrow.svg" alt="Icono"
-                                    class="w-4 h-4 ml-auto transform transition-transform duration-300"
-                                    :class="state.panels.panelService ? 'rotate-180' : ''" />
-                            </div>
-                            <Transition name="fade">
-                                <div v-if="state.panels.panelService" class="w-full max-h-40 overflow-y-auto">
-                                    <p class="text-gray-600 mb-4">Selecciona los servicios que necesitas:</p>
-                                    <!-- Aquí irían las opciones de servicios cuando estén disponibles -->
-                                </div>
-                            </Transition>
-                        </div>
-
-                        <!-- Filtros de ubicación -->
-                        <div class="w-full">
-                            <div class="w-full flex items-center px-2" @click="togglePanel('panelLocation')">
-                                <h1 class="text-base font-medium font-poppins max-w-[80%] mb-3">Ubicación</h1>
-                                <img src="@/assets/svg/arrow.svg" alt="Icono"
-                                    class="w-4 h-4 ml-auto transform transition-transform duration-300"
-                                    :class="state.panels.panelLocation ? 'rotate-180' : ''" />
-                            </div>
-                            <Transition name="fade">
-                                <div v-if="state.panels.panelLocation" class="w-full max-h-40 overflow-y-auto">
-                                    <div v-for="(option, index) in citys" :key="index" class="flex w-full my-2"
-                                        @click="addOrRemoveCity(option)">
-                                        <input type="checkbox" :id="'mobile-city-checkbox-' + index" :checked="isCitySelected(option)"
-                                            :value="option"
-                                            class="w-5 h-5 mx-2 colorvar pointer-events-none accent-[var(--blue-1)]">
-                                        <h1 class="mt-auto cursor-pointer">{{ option.name }}</h1>
-                                    </div>
-                                </div>
-                            </Transition>
-                        </div>
-                    </div>
-
-                    <!-- Botones fijos abajo -->
-                    <div class="w-full">
-                        <div class="flex justify-between px-8 py-5">
-                            <button @click="clearFilters"
-                                class="bg-transparent w-[40%] rounded font-poppins text-base font-semibold cursor-pointer"
-                                style="color: var(--blue-1);">Limpiar</button>
-                            <button tabindex="0"
-                                class="w-[50%] mx-2 text-base font-bold text-white py-2 rounded-xl text-center flex items-center justify-center cursor-pointer whitespace-nowrap"
-                                style="background-color: var(--blue-1);" @click="load_data(); togglePanel('panelSearch')">
-                                Aplicar filtros
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
         <!-- Contenedor principal -->
         <div class="container m-auto px-2 min-h-svh">
             <div class="lg:flex">
-                <!-- Sidebar desktop (solo visible en lg y superior) -->
+                <!-- Sidebar desktop -->
                 <div class="hidden lg:flex w-3/10 mx-9 bg-white flex-col rounded-2xl h-full sticky top-10">
-                    <!-- Contenido con scroll -->
                     <div class="overflow-y-auto px-8 max-h-[50vh] min-h-0">
                         <!-- Búsqueda por nombre para desktop -->
                         <div class="w-full">
@@ -621,7 +486,6 @@ export default {
                             <Transition name="fade">
                                 <div v-if="state.panels.panelService" class="w-full max-h-40 overflow-y-auto">
                                     <p class="text-gray-600 mb-4">Selecciona los servicios que necesitas:</p>
-                                    <!-- Aquí irían las opciones de servicios cuando estén disponibles -->
                                 </div>
                             </Transition>
                         </div>
@@ -688,21 +552,6 @@ export default {
                         <div v-for="(option, index) in list_professionals" :key="index"
                             class="flex flex-col items-center p-0 md:p-4 rounded-lg">
                             <CardSpecialist :user_data="option" class="mb-3" />
-                        </div>
-                        
-                        <!-- Mostrar datos de ejemplo si no hay datos del servidor y no está cargando -->
-                        <div v-if="!isLoading && list_professionals.length === 0 && items.length > 0" 
-                             class="flex flex-col flex-wrap justify-center">
-                            <div class="w-full text-center mb-4">
-                                <p class="text-gray-500 text-sm">Mostrando datos de ejemplo:</p>
-                            </div>
-                            <!-- Comentado temporalmente hasta resolver la incompatibilidad de tipos -->
-                            <!-- 
-                            <div v-for="(option, index) in items.slice(0, 3)" :key="`example-${index}`"
-                                class="flex flex-col items-center p-0 md:p-4 rounded-lg">
-                                <CardSpecialist :user_data="option" class="mb-3" />
-                            </div>
-                            -->
                         </div>
                     </div>
                 </div>
