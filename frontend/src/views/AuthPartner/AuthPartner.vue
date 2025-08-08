@@ -1,6 +1,4 @@
 <script lang="ts">
-import Navbar from '@/Modules/Home/Navbar.vue';
-import Footer_Color from '@/common/Footer_Color.vue';
 import { ref, reactive } from 'vue';
 import type { authdto } from '@/dto/auth/auth.tdo';
 import { useAuthStore } from '@/store/auth.store';
@@ -9,11 +7,15 @@ import axios from 'axios';
 import { toast } from 'vue3-toastify';
 import { http_status } from '@/models/http_status';
 
+// ✅ IMPORTAR COMPONENTES (comentar si no están disponibles)
+// import Navbar from '@/Modules/Home/Navbar.vue';
+// import Footer_Color from '@/common/Footer_Color.vue';
+
 export default {
     name: 'AuthPartner',
     components: {
-        Navbar,
-        Footer_Color
+        // Navbar,
+        // Footer_Color
     },
     setup() {
         const store = useAuthStore();
@@ -63,7 +65,7 @@ export default {
         };
     },
     methods: {
-        // ✅ MÉTODO DE LOGIN MODIFICADO - SIN VALIDACIÓN DE PLANES
+        // ✅ MÉTODO DE LOGIN CORREGIDO
         async loginComponent() {
             const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue-1').trim();
             
@@ -316,18 +318,16 @@ export default {
         }
     },
     
-    // ✅ WATCHER MODIFICADO - REDIRECCIÓN INMEDIATA SIN VALIDAR PLANES
+    // ✅ WATCHER CORREGIDO - REDIRECCIÓN SIN VALIDAR PLANES
     watch: {
         user(newUser: any) {
-            // ✅ Redirigir inmediatamente al panel correspondiente
-            // NO validar planes aquí - se manejará dentro del panel
             if (newUser && newUser.role) {
                 switch (newUser.role) {
                     case 'USER':
                         this.$router.push('/accountuser');
                         break;
                     case 'USER_PARTNER':
-                        this.$router.push('/paneluser'); // ✅ Redirigir sin validar plan
+                        this.$router.push('/paneluser');
                         break;
                     case 'ADMIN':
                         this.$router.push('/paneladmin');
@@ -358,8 +358,19 @@ export default {
 </script>
 
 <template>
-    <div class="w-screen min-h-screen">
-        <Navbar />
+    <div class="min-h-screen bg-gray-50">
+        <!-- ✅ NAVBAR SIMPLE (comentado si no está disponible) -->
+        <!-- <Navbar /> -->
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold text-[var(--blue-1)]">DocVisual</h1>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
         <div class="w-full min-h-screen bg-gray-100 flex justify-center items-center font-poppins">
             <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
                 
@@ -418,7 +429,6 @@ export default {
                             type="button"
                             class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
                             @click="showPassword = !showPassword">
-                            <!-- Eye icons here -->
                             <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
                                 <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/>
                             </svg>
@@ -460,7 +470,7 @@ export default {
                         </span>
                     </p>
 
-                    <!-- Formulario de registro aquí -->
+                    <!-- Formulario de registro simplificado -->
                     <div class="flex gap-2 mb-3">
                         <input 
                             type="text" 
@@ -504,37 +514,6 @@ export default {
                         class="w-full px-4 py-5 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
                     />
 
-                    <!-- File uploads para tarjeta profesional -->
-                    <div class="flex flex-col md:flex-row gap-4 mb-4">
-                        <!-- Frontal -->
-                        <div class="w-full md:w-1/2 flex flex-col items-center border border-gray-300 rounded-lg p-4">
-                            <label for="front-card" class="text-gray-600 mb-2 text-center text-sm">
-                                Foto Tarjeta Profesional (Frontal)
-                            </label>
-                            <input type="file" id="front-card" class="hidden" @change="handleFileUpload($event, 'front')">
-                            <div 
-                                class="w-full h-32 flex items-center justify-center border-2 border-dashed border-gray-400 rounded-lg cursor-pointer hover:border-[var(--blue-1)]"
-                                @click="triggerFileInput('front')">
-                                <img v-if="register.frontImage" :src="register.frontImage" class="w-full h-full object-cover rounded-lg" />
-                                <span v-else class="text-gray-500 text-sm">Seleccionar imagen</span>
-                            </div>
-                        </div>
-
-                        <!-- Posterior -->
-                        <div class="w-full md:w-1/2 flex flex-col items-center border border-gray-300 rounded-lg p-4">
-                            <label for="back-card" class="text-gray-600 mb-2 text-center text-sm">
-                                Foto Tarjeta Profesional (Posterior)
-                            </label>
-                            <input type="file" id="back-card" class="hidden" @change="handleFileUpload($event, 'back')">
-                            <div 
-                                class="w-full h-32 flex items-center justify-center border-2 border-dashed border-gray-400 rounded-lg cursor-pointer hover:border-[var(--blue-1)]"
-                                @click="triggerFileInput('back')">
-                                <img v-if="register.backImage" :src="register.backImage" class="w-full h-full object-cover rounded-lg" />
-                                <span v-else class="text-gray-500 text-sm">Seleccionar imagen</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Contraseñas -->
                     <div class="relative w-full mb-3">
                         <input 
@@ -548,7 +527,7 @@ export default {
                             type="button"
                             class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
                             @click="showPassword = !showPassword">
-                            <!-- Eye icons -->
+                            <!-- Eye icons aquí -->
                         </button>
                     </div>
 
@@ -573,6 +552,12 @@ export default {
                         <p :class="passwordValid.hasSpecialChar ? 'text-green-600' : 'text-red-600'">
                             ✓ Al menos un carácter especial
                         </p>
+                    </div>
+
+                    <!-- File uploads (simplificado) -->
+                    <div class="mb-4 p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
+                        <p class="text-sm text-gray-600">Subir tarjeta profesional (frontal y posterior)</p>
+                        <p class="text-xs text-gray-500 mt-1">Esta funcionalidad se habilitará después del registro básico</p>
                     </div>
 
                     <!-- Checkboxes -->
@@ -616,7 +601,14 @@ export default {
                 </div>
             </div>
         </div>
-        <Footer_Color />
+        
+        <!-- ✅ FOOTER SIMPLE (comentado si no está disponible) -->
+        <!-- <Footer_Color /> -->
+        <footer class="bg-white border-t border-gray-200 py-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <p class="text-gray-500">© 2024 DocVisual. Todos los derechos reservados.</p>
+            </div>
+        </footer>
     </div>
 </template>
 
