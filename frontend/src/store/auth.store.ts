@@ -1,3 +1,5 @@
+// frontend/src/store/auth.store.ts
+
 import type { registerPartnerDto } from '@/dto/auth'
 import type { authdto } from '@/dto/auth/auth.tdo'
 import type { registerDto } from '@/dto/auth/register.dto'
@@ -298,7 +300,6 @@ export const useAuthStore = defineStore('auth', {
 
         /**
          * ✅ Refrescar token si está próximo a expirar
-         * NOTA: Esta función reemplaza la anterior 'refreshToken' que causaba errores
          */
         async refreshTokenIfNeeded() {
             try {
@@ -313,15 +314,6 @@ export const useAuthStore = defineStore('auth', {
                 console.error('Error refreshing token:', error);
                 // En caso de error, mantener el token actual
             }
-        },
-
-        /**
-         * ✅ Método legacy para compatibilidad (ELIMINADO refreshToken)
-         * Si algún componente llama refreshToken(), redirigir a refreshTokenIfNeeded()
-         */
-        async refreshToken() {
-            console.warn('refreshToken() is deprecated, use refreshTokenIfNeeded() instead');
-            return this.refreshTokenIfNeeded();
         }
     }
 });
