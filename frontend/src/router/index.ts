@@ -21,8 +21,22 @@ import Reset_Password from '@/Modules/reset_password/Reset_Password.vue';
 import Confirmation from '@/Modules/confirmation/Confirmation.vue';
 import PanelAdmin from '@/views/panelAdmin/PanelAdmin.vue';
 import Services from '@/views/services/Services.vue';
+import adminProfessionals from '@/views/Admin/AdminProfessionals.vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const route = import.meta.env.BASE_URL || "http://localhost:8080";
+
+// Función para verificar estado de pago
+async function checkPaymentStatus(userId: string): Promise<boolean> {
+  try {
+    const response = await axios.get(`/users/payment-status/${userId}`);
+    return response.data.hasPaid && response.data.isActive;
+  } catch (error) {
+    console.error('Error verificando estado de pago:', error);
+    return false;
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(route),
@@ -92,18 +106,18 @@ const router = createRouter({
       path: '/specialists',
       name: 'specialists',
       component: Specialists,
-    }, 
+    },
     {
       path: '/specialist/:id',
       name: 'specialistdetail',
       component: SpecialistDetail,
       props: true
-    }, 
+    },
     {
       path: '/planes',
       name: 'planes',
       component: Price
-    }, 
+    },
     {
       path: '/purpose',
       name: 'purpose',
@@ -136,12 +150,17 @@ const router = createRouter({
       path: '/services',
       name: 'services',
       component: Services
+    },
+    {
+      path: '/admin/profesionales',
+      name: 'adminProfessionals',
+      component: adminProfessionals,
+      meta: { requiresAdmin: true, requiresAuth: true }
     }
   ],
 })
 
-// ✅ ROUTER GUARD MEJORADO - SIN VALIDACIÓN DE PLANES EN AUTENTICACIÓN
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const isAuthenticated = !!authStore.token;
   const role = authStore.user?.role;
@@ -151,30 +170,29 @@ router.beforeEach((to, from, next) => {
     return next("/auth");
   }
 
+  // Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
+  if (to.name === "paneladmin" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
+    return next("/");
+  }
+
   // 🛡 Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
   if (to.name === "paneladmin" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
     return next("/");
   }
 
   // 🧭 Si va a /auth y ya está autenticado → redirigir al panel según el rol
-  // ✅ MODIFICACIÓN: Permitir redirección inmediata sin validar planes
   if (to.name === "auth" && isAuthenticated) {
     if (role === "USER") return next("/accountuser");
     if (role === "USER_PARTNER") return next("/paneluser");
     if (role === "ADMIN" || role === "SUPER_ADMIN") return next("/paneladmin");
   }
 
-  // ✅ MODIFICACIÓN: Permitir acceso a auth-professional sin validar planes
   if (to.name === "authParthner" && isAuthenticated) {
     if (role === "USER") return next("/accountuser");
     if (role === "USER_PARTNER") return next("/paneluser");
     if (role === "ADMIN" || role === "SUPER_ADMIN") return next("/paneladmin");
   }
-
-  // ✅ NUEVO: Solo permitir validación de planes DENTRO del panel, no en la navegación
-  // El componente panel_user_Professional se encargará de manejar la validación de planes
-  // después de que el usuario esté completamente autenticado y dentro del panel
-
+  
   next();
 });
 
