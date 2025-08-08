@@ -170,30 +170,106 @@ router.beforeEach(async (to, from, next) => {
     return next("/auth");
   }
 
-  // Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
-  if (to.name === "paneladmin" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
+  // 🛡️ Verificación de roles para rutas administrativas
+  if (to.meta.requiresAdmin && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Acceso Denegado',
+      text: 'No tienes permisos para acceder a esta sección',
+      confirmButtonText: 'OK'
+    });
     return next("/");
   }
 
-  // 🛡 Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
+  // 🔐 Verificación específica para panel de administración
   if (to.name === "paneladmin" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Acceso Denegado',
+      text: 'Solo administradores pueden acceder al panel de administración',
+      confirmButtonText: 'OK'
+    });
     return next("/");
   }
 
-  // 🧭 Si va a /auth y ya está autenticado → redirigir al panel según el rol
+  // 🔐 Verificación para administración de profesionales
+  if (to.name === "adminProfessionals" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Acceso Denegado',
+      text: 'Solo administradores pueden gestionar profesionales',
+      confirmButtonText: 'OK'
+    });
+    return next("/");
+  }
+
+  // 🧭 Redirección para usuarios ya autenticados que van a páginas de auth
   if (to.name === "auth" && isAuthenticated) {
-    if (role === "USER") return next("/accountuser");
-    if (role === "USER_PARTNER") return next("/paneluser");
-    if (role === "ADMIN" || role === "SUPER_ADMIN") return next("/paneladmin");
+    switch (role) {
+      case "USER":
+        return next("/accountuser");
+      case "USER_PARTNER":
+        return next("/paneluser");
+      case "ADMIN":
+      case "SUPER_ADMIN":
+        return next("/paneladmin");
+      default:
+        return next("/");
+    }
   }
 
+  // 🧭 Redirección para usuarios ya autenticados que van a auth-professional
   if (to.name === "authParthner" && isAuthenticated) {
-    if (role === "USER") return next("/accountuser");
-    if (role === "USER_PARTNER") return next("/paneluser");
-    if (role === "ADMIN" || role === "SUPER_ADMIN") return next("/paneladmin");
+    switch (role) {
+      case "USER":
+        return next("/accountuser");
+      case "USER_PARTNER":
+        return next("/paneluser");
+      case "ADMIN":
+      case "SUPER_ADMIN":
+        return next("/paneladmin");
+      default:
+        return next("/");
+    }
+  }
+
+  // 💳 Verificación de estado de pago para partners (opcional)
+  if (to.meta.requiresPartner && role === "USER_PARTNER") {
+    try {
+      const hasValidPayment = await checkPaymentStatus(authStore.user?.id);
+      if (!hasValidPayment) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Plan Requerido',
+          text: 'Necesitas un plan activo para acceder a esta funcionalidad',
+          confirmButtonText: 'Ver Planes',
+          showCancelButton: true,
+          cancelButtonText: 'Cancelar'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            return next("/planes");
+          } else {
+            return next("/accountuser");
+          }
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando estado de pago:', error);
+      // En caso de error, permitir el acceso pero mostrar advertencia
+      console.warn('No se pudo verificar el estado de pago, permitiendo acceso');
+    }
   }
   
+  // ✅ Si pasa todas las validaciones, continuar
   next();
+});
+
+// 🔄 Interceptor para manejar errores de autenticación globalmente
+router.afterEach((to, from, failure) => {
+  if (failure) {
+    console.error('Error de navegación:', failure);
+  }
 });
 
 export default router

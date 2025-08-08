@@ -1,21 +1,22 @@
 <script lang="ts">
 import { ref, reactive } from 'vue';
 import type { authdto } from '@/dto/auth/auth.tdo';
+import type { registerPartnerDto } from '@/dto/auth/registerPartner.dto';
 import { useAuthStore } from '@/store/auth.store';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 import { toast } from 'vue3-toastify';
 import { http_status } from '@/models/http_status';
 
-// ✅ IMPORTAR COMPONENTES (comentar si no están disponibles)
-// import Navbar from '@/Modules/Home/Navbar.vue';
-// import Footer_Color from '@/common/Footer_Color.vue';
+// ✅ IMPORTAR COMPONENTES
+import Navbar from '@/Modules/Home/Navbar.vue';
+import Footer_Color from '@/common/Footer_Color.vue';
 
 export default {
     name: 'AuthPartner',
     components: {
-        // Navbar,
-        // Footer_Color
+        Navbar,
+        Footer_Color
     },
     setup() {
         const store = useAuthStore();
@@ -111,10 +112,24 @@ export default {
 
         async registerComponent() {
             if (this.isFormValid) {
+                const newRegister: registerPartnerDto = {
+                    email: this.register.gmail,
+                    names: this.register.names,
+                    lastnames: this.register.lastnames,
+                    password: this.register.password,
+                    document: this.register.document,
+                    phone: this.register.phone,
+                    title: this.register.title
+                };
+                
                 try {
-                    await this.submitForm();
+                    await this.store.registerParthner(newRegister);
+                    toast.success("Gracias por ser parte de DocVisual, tu perfil entra en aprobación y validación, en 24 a 48 horas máximo, tendrás acceso a tu cuenta", {
+                        position: 'top-center',
+                        autoClose: 2000
+                    });
                 } catch (error: any) {
-                    toast.error(error.message || 'Error al procesar el formulario', {
+                    toast.error(error.message, {
                         position: 'top-center',
                         autoClose: 2000,
                     });
@@ -126,6 +141,16 @@ export default {
 
         async resetPassword() {
             const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--blue-1').trim();
+            
+            if (this.loginInput.gmail.trim() === '') {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Email requerido',
+                    text: 'Por favor, ingresa tu email para recuperar la contraseña',
+                    confirmButtonColor: blueColor
+                });
+                return;
+            }
             
             try {
                 const response = await axios.post('/auth-reset/reset', {
@@ -145,43 +170,6 @@ export default {
                     title: 'Error al enviar',
                     text: error.response?.data?.message || 'Hubo un problema al enviar el correo.',
                     confirmButtonColor: blueColor
-                });
-            }
-        },
-
-        submitForm(): void {
-            try {
-                const formData = new FormData();
-                const frontFile = this.base64ToFile(this.register.frontImage, 'front.png');
-                const backFile = this.base64ToFile(this.register.backImage, 'back.png');
-                
-                formData.append('side_front', frontFile);
-                formData.append('side_back', backFile);
-                formData.append('document', this.register.document);
-                formData.append('email', this.register.gmail);
-                formData.append('lastnames', this.register.lastnames);
-                formData.append('names', this.register.names);
-                formData.append('password', this.register.password);
-                formData.append('phone', this.register.phone);
-                formData.append('title', this.register.title);
-                
-                const response = axios.post('/files-privates/create-user-pending', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Inscripción enviada',
-                    text: 'Un administrador revisará tus datos. Cuando tu perfil sea aprobado, recibirás una confirmación por correo electrónico.',
-                });
-                
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error inesperado',
-                    text: 'Ocurrió un error inesperado al procesar el formulario.',
                 });
             }
         },
@@ -263,6 +251,25 @@ export default {
             if (!input.files || input.files.length === 0) return;
 
             const file = input.files[0];
+            
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                toast.error('Solo se permiten archivos de imagen', {
+                    position: 'top-center',
+                    autoClose: 2000,
+                });
+                return;
+            }
+
+            // Validar tamaño (5MB máximo)
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('El archivo no puede ser mayor a 5MB', {
+                    position: 'top-center',
+                    autoClose: 2000,
+                });
+                return;
+            }
+
             const reader = new FileReader();
 
             reader.onload = (e: ProgressEvent<FileReader>) => {
@@ -286,19 +293,8 @@ export default {
         user() {
             return this.store.user;
         },
-        state(newState: http_status) {
-            if (newState === http_status.LOADING) {
-                Swal.fire({
-                    title: "Processing...",
-                    html: "Please wait...",
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    },
-                });
-            } else {
-                Swal.close();
-            }
+        state() {
+            return this.store.state;
         },
         isFormValid() {
             return (
@@ -353,265 +349,284 @@ export default {
                 Swal.close();
             }
         }
+    },
+
+    beforeUnmount() {
+        document.removeEventListener("keyup", this.handleEnter);
+    },
+
+    mounted() {
+        document.addEventListener("keyup", this.handleEnter);
+    },
+
+    created() {
+        // Verificar si ya hay un token al cargar el componente
+        if (this.token && this.token !== '') {
+            this.$router.push('/paneluser');
+        }
     }
 };
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-50">
-        <!-- ✅ NAVBAR SIMPLE (comentado si no está disponible) -->
-        <!-- <Navbar /> -->
-        <nav class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-[var(--blue-1)]">DocVisual</h1>
-                    </div>
-                </div>
+    <Navbar />
+    <div class="w-screen flex flex-col justify-between bg-gray-100 font-poppins">
+        <!-- Contenido de autenticación aquí -->
+        <div class="w-full lg:flex-grow lg:flex bg-gray-100 text-sm">
+            <div class="hidden lg:block lg:w-[45%] h-screen sticky top-0">
+                <img src="@/assets/images/letters.webp" alt="Image" class="w-full h-full object-cover" />
             </div>
-        </nav>
-        
-        <div class="w-full min-h-screen bg-gray-100 flex justify-center items-center font-poppins">
-            <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
-                
-                <!-- PANTALLA INICIAL -->
-                <div v-if="!panels.login && !panels.register" class="text-center">
-                    <h1 class="text-3xl font-bold mb-4 text-[var(--blue-1)]">
-                        Únete a DocVisual
+
+            <div class="w-full lg:w-1/2 flex justify-center">
+                <div class="w-[90%] sm:w-[60%] flex flex-col h-fit mx-3 m-auto">
+                    <img src="@/assets/images/LogoPng.webp" alt="image"
+                        class="h-16 w-auto pt-5 m-auto mb-7 cursor-pointer" @click="gotoRute('/')" />
+                    
+                    <h1 class="text-center font-poppins font-bold pt-6 text-base" style="color: var(--blue-1);"
+                        v-if="panels.login === false && panels.register === false">
+                        Hacemos visibles a los expertos
                     </h1>
-                    <h2 class="font-semibold text-center pt-4 mb-8">
+                    <h2 class="font-poppins font-semibold m-auto text-center pt-8"
+                        v-if="panels.login === false && panels.register === false">
                         Crea tu cuenta y haz parte de la comunidad de especialistas en salud visual
                     </h2>
                     
-                    <div class="flex flex-col gap-3">
+                    <div class="w-full flex flex-col items-center px-4 mt-7"
+                        v-if="panels.login === false && panels.register === false">
                         <button
-                            class="w-full py-4 rounded-xl font-medium text-white transition-colors duration-300 hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300"
-                            style="background-color: var(--blue-1);"
-                            @click="togglePanel('register')">
+                            class="w-full mb-3 mt-5 rounded-xl font-poppins cursor-pointer py-4 font-medium tracking-wide text-white transition-colors duration-300 transform hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80"
+                            style="background-color: var(--blue-1);" @click="togglePanel('register')">
                             Crear una cuenta
                         </button>
-                        
                         <button
-                            class="w-full py-4 rounded-xl font-medium transition-colors duration-300 focus:outline-none focus:ring focus:ring-blue-300"
+                            class="w-full mb-5 mt-2 rounded-xl font-poppins cursor-pointer py-4 font-medium tracking-wide text-white transition-colors duration-300 transform focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80"
                             style="border: 2px solid var(--blue-1); color: var(--blue-1);"
                             @click="togglePanel('login')">
                             Iniciar sesión
                         </button>
                     </div>
-                </div>
 
-                <!-- PANEL DE LOGIN -->
-                <div v-if="panels.login" class="w-full">
-                    <h1 class="text-3xl font-semibold mb-3 text-center">Iniciar sesión</h1>
-                    <p class="mb-5 text-center">
-                        ¿No tienes cuenta? 
-                        <span class="text-[var(--blue-1)] cursor-pointer" @click="togglePanel('register')">
-                            Registrarme
-                        </span>
-                    </p>
+                    <!-- PANEL DE LOGIN -->
+                    <div class="w-full flex flex-col items-center px-4" v-if="panels.login">
+                        <h1 class="text-3xl font-semibold mb-3">Iniciar sesión</h1>
+                        <h1 class="mb-5">¿No tienes cuenta? 
+                            <span class="text-[var(--blue-1)] cursor-pointer" @click="togglePanel('register')">
+                                Registrarme
+                            </span>
+                        </h1>
 
-                    <input 
-                        type="email" 
-                        placeholder="Correo" 
-                        v-model="loginInput.gmail"
-                        class="w-full px-4 py-5 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
+                        <input type="email" placeholder="Correo" v-model="loginInput.gmail"
+                            class="w-full px-4 py-5 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
 
-                    <div class="relative w-full mb-4">
-                        <input 
-                            :type="showPassword ? 'text' : 'password'" 
-                            placeholder="Contraseña"
-                            v-model="loginInput.password" 
-                            @keyup.enter="handleEnter"
-                            class="w-full px-4 py-5 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                        />
+                        <div class="relative w-full mb-4">
+                            <input :type="showPassword ? 'text' : 'password'" placeholder="Contraseña"
+                                v-model="loginInput.password" @keyup.enter="handleEnter"
+                                class="w-full px-4 py-5 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                            <button type="button"
+                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
+                                @click="showPassword = !showPassword">
+                                <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
+                                    <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/>
+                                </svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
+                                    <path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/>
+                                </svg>
+                            </button>
+                        </div>
+
                         <button 
-                            type="button"
-                            class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
-                            @click="showPassword = !showPassword">
-                            <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-                                <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/>
-                            </svg>
-                            <svg v-else xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-                                <path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <button 
-                        class="w-full py-4 mb-4 rounded-xl font-medium text-white transition-colors duration-300 hover:bg-blue-500"
-                        style="background-color: var(--blue-1);"
-                        @click="loginComponent">
-                        Iniciar sesión
-                    </button>
-
-                    <p class="text-center">
-                        <span class="text-[var(--blue-1)] cursor-pointer" @click="resetPassword">
-                            ¿Olvidaste tu contraseña?
-                        </span>
-                    </p>
-
-                    <div class="mt-4 text-center">
-                        <button 
-                            class="text-gray-600 hover:text-[var(--blue-1)]"
-                            @click="closepanels">
-                            ← Volver
-                        </button>
-                    </div>
-                </div>
-
-                <!-- PANEL DE REGISTRO -->
-                <div v-if="panels.register" class="w-full">
-                    <h1 class="text-3xl font-semibold mb-2 text-center">Registrarme</h1>
-                    <p class="mb-6 text-center">
-                        ¿Ya tienes cuenta? 
-                        <span class="text-[var(--blue-1)] cursor-pointer" @click="togglePanel('login')">
+                            class="w-full py-4 mb-4 rounded-xl font-medium text-white transition-colors duration-300 hover:bg-blue-500"
+                            style="background-color: var(--blue-1);"
+                            @click="loginComponent">
                             Iniciar sesión
-                        </span>
-                    </p>
-
-                    <!-- Formulario de registro simplificado -->
-                    <div class="flex gap-2 mb-3">
-                        <input 
-                            type="text" 
-                            placeholder="Nombre" 
-                            v-model="register.names"
-                            class="w-1/2 px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                        />
-                        <input 
-                            type="text" 
-                            placeholder="Apellido" 
-                            v-model="register.lastnames"
-                            class="w-1/2 px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                        />
-                    </div>
-
-                    <input 
-                        type="email" 
-                        placeholder="Correo" 
-                        v-model="register.gmail"
-                        class="w-full px-4 py-5 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
-
-                    <input 
-                        type="text" 
-                        placeholder="Cédula" 
-                        v-model="register.document"
-                        class="w-full px-4 py-5 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
-
-                    <input 
-                        type="text" 
-                        placeholder="Celular" 
-                        v-model="register.phone"
-                        class="w-full px-4 py-5 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
-
-                    <input 
-                        type="text" 
-                        placeholder="Tarjeta profesional" 
-                        v-model="register.title"
-                        class="w-full px-4 py-5 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
-
-                    <!-- Contraseñas -->
-                    <div class="relative w-full mb-3">
-                        <input 
-                            :type="showPassword ? 'text' : 'password'" 
-                            placeholder="Contraseña"
-                            v-model="register.password" 
-                            @input="checkPassword"
-                            class="w-full px-4 py-5 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                        />
-                        <button 
-                            type="button"
-                            class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
-                            @click="showPassword = !showPassword">
-                            <!-- Eye icons aquí -->
                         </button>
-                    </div>
 
-                    <input 
-                        :type="showPassword ? 'text' : 'password'" 
-                        placeholder="Confirmar contraseña"
-                        v-model="register.confirmpassword"
-                        class="w-full px-4 py-5 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" 
-                    />
-
-                    <!-- Validación de contraseña -->
-                    <div v-if="register.password" class="mb-4 text-sm">
-                        <p :class="passwordValid.minLength ? 'text-green-600' : 'text-red-600'">
-                            ✓ Mínimo 8 caracteres
-                        </p>
-                        <p :class="passwordValid.hasLowerCase ? 'text-green-600' : 'text-red-600'">
-                            ✓ Al menos una minúscula
-                        </p>
-                        <p :class="passwordValid.hasUpperCase ? 'text-green-600' : 'text-red-600'">
-                            ✓ Al menos una mayúscula
-                        </p>
-                        <p :class="passwordValid.hasSpecialChar ? 'text-green-600' : 'text-red-600'">
-                            ✓ Al menos un carácter especial
-                        </p>
-                    </div>
-
-                    <!-- File uploads (simplificado) -->
-                    <div class="mb-4 p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                        <p class="text-sm text-gray-600">Subir tarjeta profesional (frontal y posterior)</p>
-                        <p class="text-xs text-gray-500 mt-1">Esta funcionalidad se habilitará después del registro básico</p>
-                    </div>
-
-                    <!-- Checkboxes -->
-                    <div class="mb-4">
-                        <label class="flex items-center mb-2">
-                            <input type="checkbox" v-model="register.terms" class="mr-2">
-                            <span class="text-sm">
-                                Acepto los 
-                                <span class="text-[var(--blue-1)] cursor-pointer" @click="goToTerms">
-                                    términos y condiciones
-                                </span>
+                        <p class="text-center mb-4">
+                            <span class="text-[var(--blue-1)] cursor-pointer" @click="resetPassword">
+                                ¿Olvidaste tu contraseña?
                             </span>
-                        </label>
-                        
-                        <label class="flex items-center">
-                            <input type="checkbox" v-model="register.acept" class="mr-2">
-                            <span class="text-sm">
-                                Acepto las 
-                                <span class="text-[var(--blue-1)] cursor-pointer" @click="goToData">
-                                    políticas de privacidad
-                                </span>
-                            </span>
-                        </label>
+                        </p>
+
+                        <div class="text-center">
+                            <button 
+                                class="text-gray-600 hover:text-[var(--blue-1)]"
+                                @click="closepanels">
+                                ← Volver
+                            </button>
+                        </div>
                     </div>
 
-                    <button 
-                        class="w-full py-4 mb-4 rounded-xl font-medium text-white transition-colors duration-300"
-                        :class="isFormValid ? 'bg-[var(--blue-1)] hover:bg-blue-500' : 'bg-gray-400 cursor-not-allowed'"
-                        :disabled="!isFormValid"
-                        @click="registerComponent">
-                        Crear cuenta
-                    </button>
+                    <!-- PANEL DE REGISTRO -->
+                    <div class="w-full flex flex-col items-center px-4" v-if="panels.register">
+                        <h1 class="text-3xl font-semibold mb-2">Registrarme</h1>
+                        <h1 class="mb-6">¿Ya tienes cuenta? 
+                            <span class="text-[var(--blue-1)] cursor-pointer" @click="togglePanel('login')">
+                                Iniciar sesión
+                            </span>
+                        </h1>
 
-                    <div class="text-center">
+                        <!-- Campos de registro -->
+                        <div class="w-full flex gap-2">
+                            <div class="w-1/2 mb-3">
+                                <input type="text" placeholder="Nombre" v-model="register.names"
+                                    class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                            </div>
+                            <div class="w-1/2 mb-3">
+                                <input type="text" placeholder="Apellido" v-model="register.lastnames"
+                                    class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                            </div>
+                        </div>
+
+                        <div class="w-full mb-3">
+                            <input type="email" placeholder="Correo" v-model="register.gmail"
+                                class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                        </div>
+
+                        <div class="w-full mb-3">
+                            <input type="text" placeholder="Cédula" v-model="register.document"
+                                class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                        </div>
+
+                        <div class="w-full mb-3">
+                            <input type="text" placeholder="Celular" v-model="register.phone"
+                                class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                        </div>
+
+                        <div class="w-full mb-3">
+                            <input type="text" placeholder="Tarjeta profesional" v-model="register.title"
+                                class="w-full px-4 py-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                        </div>
+
+                        <!-- Contraseñas -->
+                        <div class="relative w-full mb-3">
+                            <input :type="showPassword ? 'text' : 'password'" placeholder="Contraseña"
+                                v-model="register.password" @input="checkPassword"
+                                class="w-full px-4 py-5 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                            <button type="button"
+                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500"
+                                @click="showPassword = !showPassword">
+                                <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
+                                    <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z"/>
+                                </svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368">
+                                    <path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="relative w-full mb-3">
+                            <input :type="showPassword ? 'text' : 'password'" placeholder="Confirmar contraseña"
+                                v-model="register.confirmpassword"
+                                class="w-full px-4 py-5 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--blue-1)]" />
+                        </div>
+
+                        <!-- Validación de contraseña -->
+                        <div v-if="register.password" class="mb-4 text-sm w-full">
+                            <p :class="passwordValid.minLength ? 'text-green-600' : 'text-red-600'">
+                                ✓ Mínimo 8 caracteres
+                            </p>
+                            <p :class="passwordValid.hasLowerCase ? 'text-green-600' : 'text-red-600'">
+                                ✓ Al menos una minúscula
+                            </p>
+                            <p :class="passwordValid.hasUpperCase ? 'text-green-600' : 'text-red-600'">
+                                ✓ Al menos una mayúscula
+                            </p>
+                            <p :class="passwordValid.hasSpecialChar ? 'text-green-600' : 'text-red-600'">
+                                ✓ Al menos un carácter especial
+                            </p>
+                        </div>
+
+                        <!-- Carga de archivos -->
+                        <div class="w-full mb-4">
+                            <h3 class="text-sm font-medium mb-2">Tarjeta profesional (ambos lados):</h3>
+                            
+                            <!-- Input oculto para archivo frontal -->
+                            <input type="file" id="front-card" accept="image/*" style="display: none;"
+                                @change="handleFileUpload($event, 'front')" />
+                            
+                            <!-- Input oculto para archivo posterior -->
+                            <input type="file" id="back-card" accept="image/*" style="display: none;"
+                                @change="handleFileUpload($event, 'back')" />
+
+                            <div class="flex gap-2">
+                                <!-- Botón para cargar imagen frontal -->
+                                <div class="w-1/2">
+                                    <button type="button" @click="triggerFileInput('front')"
+                                        class="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-[var(--blue-1)] transition-colors">
+                                        <div v-if="register.frontImage" class="text-green-600">
+                                            ✓ Frontal cargada
+                                        </div>
+                                        <div v-else class="text-gray-500">
+                                            Cargar frontal
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <!-- Botón para cargar imagen posterior -->
+                                <div class="w-1/2">
+                                    <button type="button" @click="triggerFileInput('back')"
+                                        class="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-[var(--blue-1)] transition-colors">
+                                        <div v-if="register.backImage" class="text-green-600">
+                                            ✓ Posterior cargada
+                                        </div>
+                                        <div v-else class="text-gray-500">
+                                            Cargar posterior
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Checkboxes -->
+                        <div class="w-full mb-4">
+                            <label class="flex items-center mb-2">
+                                <input type="checkbox" v-model="register.terms" class="mr-2">
+                                <span class="text-sm">
+                                    Acepto los 
+                                    <span class="text-[var(--blue-1)] cursor-pointer" @click="goToTerms">
+                                        términos y condiciones
+                                    </span>
+                                </span>
+                            </label>
+                            
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="register.acept" class="mr-2">
+                                <span class="text-sm">
+                                    Acepto las 
+                                    <span class="text-[var(--blue-1)] cursor-pointer" @click="goToData">
+                                        políticas de privacidad
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+
                         <button 
-                            class="text-gray-600 hover:text-[var(--blue-1)]"
-                            @click="closepanels">
-                            ← Volver
+                            class="w-full py-4 mb-4 rounded-xl font-medium text-white transition-colors duration-300"
+                            :class="isFormValid ? 'bg-[var(--blue-1)] hover:bg-blue-500' : 'bg-gray-400 cursor-not-allowed'"
+                            :disabled="!isFormValid"
+                            @click="registerComponent">
+                            Crear cuenta
                         </button>
+
+                        <div class="text-center">
+                            <button 
+                                class="text-gray-600 hover:text-[var(--blue-1)]"
+                                @click="closepanels">
+                                ← Volver
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- ✅ FOOTER SIMPLE (comentado si no está disponible) -->
-        <!-- <Footer_Color /> -->
-        <footer class="bg-white border-t border-gray-200 py-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <p class="text-gray-500">© 2024 DocVisual. Todos los derechos reservados.</p>
-            </div>
-        </footer>
+        <Footer_Color />
     </div>
 </template>
 
 <style scoped>
-/* Estilos adicionales si son necesarios */
+/* Estilos personalizados si son necesarios */
+.font-poppins {
+    font-family: 'Poppins', sans-serif;
+}
 </style>

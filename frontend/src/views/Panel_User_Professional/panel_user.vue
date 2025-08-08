@@ -2,13 +2,16 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/store';
-// import { useSubscription } from '@/utils/subscriptionHelper';
 import Swal from 'sweetalert2';
 
-// ✅ IMPORTAR COMPONENTES DEL PANEL (ajustar según tu estructura)
-// Comentar imports problemáticos temporalmente
-// import Navbar from '@/Modules/Home/Navbar.vue';
-// import Footer_Color from '@/common/Footer_Color.vue';
+// ✅ IMPORTAR COMPONENTES EXISTENTES DE TU PROYECTO
+import Navbar from '@/Modules/Home/Navbar.vue';
+import Footer_Color from '@/common/Footer_Color.vue';
+
+// ✅ IMPORTAR COMPONENTES DEL PANEL (según tu estructura)
+import Panel_user_perfil from '@/Modules/Panel_User_Professional/Panel_user_perfil.vue';
+import Panel_user_diarie from '@/Modules/Panel_User_Professional/Panel_user_diarie.vue';
+import Panel_user_notifications from '@/Modules/Panel_User_Professional/notification/Panel_user_notifications.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -24,14 +27,6 @@ const subscriptionStatus = ref({
   expirationDate: ''
 });
 const currentUser = computed(() => authStore.user);
-
-// ✅ Composable para manejo de suscripciones (temporalmente comentado)
-// const { 
-//   checkAndHandleSubscription, 
-//   canAccessFeature, 
-//   showFeatureLimitedMessage,
-//   getSubscriptionStatusText 
-// } = useSubscription();
 
 // ✅ Estados del panel
 const activeSection = ref('dashboard');
@@ -54,11 +49,11 @@ const sections = [
     description: 'Información personal y profesional'
   },
   { 
-    id: 'schedule', 
-    name: 'Horarios', 
+    id: 'diary', 
+    name: 'Agenda', 
     icon: '📅', 
     requiresPlan: true,
-    description: 'Gestión avanzada de horarios'
+    description: 'Gestión de tu agenda médica'
   },
   { 
     id: 'appointments', 
@@ -136,19 +131,56 @@ const canAccessSection = (sectionId: string): boolean => {
   const section = sections.find(s => s.id === sectionId);
   if (!section?.requiresPlan) return true;
   
-  // Temporalmente usar subscriptionStatus local
   return subscriptionStatus.value.hasActivePlan;
 };
 
-// ✅ Mostrar mensaje de funcionalidad limitada (versión simplificada)
+// ✅ Mostrar mensaje de funcionalidad limitada
 const showFeatureLimitedMessage = (featureName: string): void => {
+  const featureMessages: Record<string, { title: string, description: string }> = {
+    'diary': {
+      title: 'Gestión Avanzada de Agenda',
+      description: 'Gestiona tu agenda médica con funciones avanzadas de programación y automatización.'
+    },
+    'patients': {
+      title: 'Base de Datos de Pacientes',
+      description: 'Mantén un registro completo de todos tus pacientes con historiales médicos.'
+    },
+    'reports': {
+      title: 'Reportes y Estadísticas',
+      description: 'Accede a análisis detallados de tu práctica médica y reportes financieros.'
+    }
+  };
+
+  const feature = featureMessages[featureName] || {
+    title: 'Funcionalidad Profesional',
+    description: 'Esta funcionalidad avanzada está disponible con el Plan Profesional.'
+  };
+
   Swal.fire({
-    title: 'Funcionalidad Pro',
-    text: 'Esta funcionalidad requiere un plan profesional.',
+    title: `🔒 ${feature.title}`,
+    html: `
+      <div class="text-left">
+        <p class="mb-4">${feature.description}</p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <h4 class="font-semibold text-amber-800 mb-2">💡 ¿Por qué actualizar?</h4>
+          <ul class="text-sm text-amber-700 list-disc list-inside space-y-1">
+            <li>Aumenta tu productividad</li>
+            <li>Mejora la experiencia de tus pacientes</li>
+            <li>Optimiza tus procesos médicos</li>
+            <li>Accede a herramientas profesionales</li>
+          </ul>
+        </div>
+        <p class="text-center text-gray-600">
+          <strong>Oferta especial:</strong> ¡Primer mes con 50% de descuento!
+        </p>
+      </div>
+    `,
     icon: 'info',
-    confirmButtonText: 'Ver Planes',
+    confirmButtonText: '🚀 Ver Planes',
     showCancelButton: true,
-    cancelButtonText: 'Entendido'
+    cancelButtonText: '⚡ Continuar sin esta función',
+    confirmButtonColor: '#2563eb',
+    cancelButtonColor: '#6b7280'
   }).then((result) => {
     if (result.isConfirmed) {
       window.open('/planes', '_blank');
@@ -171,8 +203,11 @@ const handleSectionClick = (sectionId: string) => {
 const loadUserData = async () => {
   try {
     console.log('Cargando datos del usuario...');
+    
+    // Simular verificación de suscripción (reemplazar con tu lógica real)
     hasActivePlan.value = false; // Por defecto sin plan
     isLimitedMode.value = !hasActivePlan.value;
+    
   } catch (error) {
     console.error('Error cargando datos del usuario:', error);
     Swal.fire({
@@ -186,7 +221,9 @@ const loadUserData = async () => {
 // ✅ Verificación de suscripción simplificada
 const checkAndHandleSubscription = async (): Promise<boolean> => {
   try {
-    // Simulación temporal - reemplazar con lógica real
+    // Por ahora, permitir acceso sin validar suscripción
+    // Aquí puedes integrar tu lógica de suscripciones cuando esté lista
+    
     if (!subscriptionStatus.value.hasActivePlan) {
       const result = await Swal.fire({
         title: 'Plan Profesional',
@@ -196,7 +233,9 @@ const checkAndHandleSubscription = async (): Promise<boolean> => {
         showDenyButton: true,
         confirmButtonText: 'Ver Planes',
         denyButtonText: 'Continuar Limitado',
-        cancelButtonText: 'Cerrar Sesión'
+        cancelButtonText: 'Cerrar Sesión',
+        allowOutsideClick: true,
+        allowEscapeKey: true
       });
 
       if (result.isConfirmed) {
@@ -302,16 +341,7 @@ const getSubscriptionStatusText = () => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- ✅ NAVBAR SIMPLE (reemplazar cuando esté disponible) -->
-    <nav class="bg-white shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-xl font-bold text-[var(--blue-1)]">DocVisual</h1>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <Navbar />
     
     <!-- ✅ LOADER MIENTRAS CARGA -->
     <div v-if="isLoading" class="flex items-center justify-center min-h-screen">
@@ -325,10 +355,10 @@ const getSubscriptionStatusText = () => {
     <div v-else class="flex flex-col lg:flex-row">
       
       <!-- ✅ SIDEBAR - DESKTOP -->
-      <div class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-white lg:shadow-lg lg:z-40" style="top: 64px;">
+      <div class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-white lg:shadow-lg lg:z-40" style="top: 80px;">
         <div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
           <div class="flex items-center flex-shrink-0 px-6">
-            <h1 class="text-xl font-bold text-[var(--blue-1)]">Panel Pro</h1>
+            <h1 class="text-xl font-bold text-[var(--blue-1)]">DocVisual Pro</h1>
           </div>
           
           <!-- ✅ ESTADO DE SUSCRIPCIÓN -->
@@ -405,7 +435,7 @@ const getSubscriptionStatusText = () => {
       <!-- ✅ SIDEBAR - MOBILE -->
       <div class="lg:hidden">
         <div class="bg-white shadow-sm px-4 py-3 flex justify-between items-center">
-          <h1 class="text-lg font-bold text-[var(--blue-1)]">Panel Pro</h1>
+          <h1 class="text-lg font-bold text-[var(--blue-1)]">DocVisual Pro</h1>
           <button 
             @click="showMobileMenu = !showMobileMenu"
             class="text-gray-600 hover:text-gray-900">
@@ -443,7 +473,7 @@ const getSubscriptionStatusText = () => {
       </div>
 
       <!-- ✅ CONTENIDO PRINCIPAL -->
-      <div class="flex-1 lg:ml-64" style="margin-top: 64px;">
+      <div class="flex-1 lg:ml-64" style="margin-top: 80px;">
         <main class="p-4 lg:p-6">
           
           <!-- ✅ BANNER DE MODO LIMITADO -->
@@ -558,7 +588,7 @@ const getSubscriptionStatusText = () => {
                       @click="handleSectionClick('appointments')"
                       class="bg-blue-50 p-4 rounded-lg text-center hover:bg-blue-100 transition-colors">
                       <div class="text-2xl mb-2">🩺</div>
-                      <p class="text-sm font-medium text-blue-900">Citas</p>
+                      <p class="text-sm font-medium text-blue-900">Nueva Cita</p>
                     </button>
                     
                     <button 
@@ -571,11 +601,11 @@ const getSubscriptionStatusText = () => {
                     </button>
                     
                     <button 
-                      @click="handleSectionClick('schedule')"
+                      @click="handleSectionClick('diary')"
                       class="bg-purple-50 p-4 rounded-lg text-center hover:bg-purple-100 transition-colors"
                       :class="!hasActivePlan ? 'opacity-50' : ''">
                       <div class="text-2xl mb-2">📅</div>
-                      <p class="text-sm font-medium text-purple-900">Horarios</p>
+                      <p class="text-sm font-medium text-purple-900">Agenda</p>
                       <span v-if="!hasActivePlan" class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded mt-1">Pro</span>
                     </button>
                     
@@ -592,27 +622,84 @@ const getSubscriptionStatusText = () => {
               </div>
             </div>
 
-            <!-- ✅ OTRAS SECCIONES SIMPLIFICADAS -->
+            <!-- ✅ MI PERFIL -->
             <div v-else-if="activeSection === 'profile'" class="p-6">
-              <h2 class="text-2xl font-bold text-gray-900 mb-6">Mi Perfil</h2>
-              <div class="bg-gray-50 p-8 rounded-lg text-center">
-                <div class="w-24 h-24 bg-[var(--blue-1)] rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span class="text-white text-2xl font-bold">
-                    {{ currentUser?.names?.charAt(0) }}{{ currentUser?.lastnames?.charAt(0) }}
-                  </span>
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Mi Perfil Profesional</h2>
+              <Panel_user_perfil />
+            </div>
+
+            <!-- ✅ AGENDA (REQUIERE PLAN) -->
+            <div v-else-if="activeSection === 'diary'" class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Gestión de Agenda</h2>
+              
+              <div v-if="!hasActivePlan" class="text-center py-12">
+                <div class="text-6xl mb-4">📅</div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Gestión Avanzada de Agenda</h3>
+                <p class="text-gray-600 mb-6">
+                  Gestiona tu agenda médica con funciones avanzadas de programación, automatización y sincronización.
+                </p>
+                <div class="bg-gray-50 rounded-lg p-6 mb-6 text-left max-w-2xl mx-auto">
+                  <h4 class="font-semibold text-gray-900 mb-3">Con el Plan Profesional podrás:</h4>
+                  <ul class="space-y-2 text-gray-600">
+                    <li class="flex items-center">
+                      <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Agenda personalizada y flexible
+                    </li>
+                    <li class="flex items-center">
+                      <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Recordatorios automáticos
+                    </li>
+                    <li class="flex items-center">
+                      <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Sincronización con calendario
+                    </li>
+                    <li class="flex items-center">
+                      <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Gestión de múltiples consultorios
+                    </li>
+                  </ul>
                 </div>
-                <h3 class="text-xl font-semibold">{{ currentUser?.names }} {{ currentUser?.lastnames }}</h3>
-                <p class="text-gray-600">{{ currentUser?.email }}</p>
-                <p class="text-sm text-gray-500 mt-2">Especialista en Salud Visual</p>
+                <button 
+                  @click="upgradeSubscription"
+                  class="bg-[var(--blue-1)] text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-medium">
+                  Actualizar a Plan Pro
+                </button>
+              </div>
+              
+              <div v-else>
+                <Panel_user_diarie />
               </div>
             </div>
 
+            <!-- ✅ CITAS -->
             <div v-else-if="activeSection === 'appointments'" class="p-6">
-              <h2 class="text-2xl font-bold text-gray-900 mb-6">Gestión de Citas</h2>
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Gestión de Citas</h2>
+                <button 
+                  v-if="hasActivePlan"
+                  class="bg-[var(--blue-1)] text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                  + Nueva Cita
+                </button>
+                <button 
+                  v-else
+                  @click="showFeatureLimitedMessage('appointments')"
+                  class="bg-gray-300 text-gray-600 px-4 py-2 rounded cursor-not-allowed">
+                  + Nueva Cita (Pro)
+                </button>
+              </div>
               
               <div v-if="!hasActivePlan" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                 <p class="text-amber-800 text-sm">
-                  <strong>Modo limitado:</strong> Puedes ver tus citas pero no crear nuevas.
+                  <strong>Modo limitado:</strong> Puedes ver tus citas existentes pero no crear nuevas o usar funcionalidades avanzadas de gestión.
+                  <button @click="upgradeSubscription" class="underline font-medium ml-1">Actualizar plan</button>
                 </p>
               </div>
               
@@ -620,14 +707,17 @@ const getSubscriptionStatusText = () => {
                 <div 
                   v-for="appointment in dashboardStats.upcomingAppointments" 
                   :key="appointment.id"
-                  class="border rounded-lg p-4">
+                  class="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div class="flex justify-between items-start">
-                    <div>
-                      <h3 class="font-semibold">{{ appointment.patient }}</h3>
+                    <div class="flex-1">
+                      <h3 class="font-semibold text-gray-900">{{ appointment.patient }}</h3>
                       <p class="text-sm text-gray-600">{{ appointment.type }}</p>
+                      <p class="text-xs text-gray-500 mt-1">
+                        📧 paciente@email.com • 📱 +57 300 123 4567
+                      </p>
                     </div>
-                    <div class="text-right">
-                      <p class="text-sm font-medium">{{ appointment.date }}, {{ appointment.time }}</p>
+                    <div class="text-right ml-4">
+                      <p class="text-sm font-medium text-gray-900">{{ appointment.date }}, {{ appointment.time }}</p>
                       <span 
                         :class="getAppointmentStatusClass(appointment.status)"
                         class="inline-block text-xs px-2 py-1 rounded mt-1">
@@ -635,37 +725,165 @@ const getSubscriptionStatusText = () => {
                       </span>
                     </div>
                   </div>
+                  
+                  <div class="mt-4 flex gap-2">
+                    <button 
+                      v-if="hasActivePlan"
+                      class="bg-blue-500 text-white text-xs px-3 py-1 rounded hover:bg-blue-600 transition-colors">
+                      Ver Detalles
+                    </button>
+                    <button 
+                      v-if="hasActivePlan"
+                      class="bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600 transition-colors">
+                      Confirmar
+                    </button>
+                    <button 
+                      v-if="hasActivePlan"
+                      class="bg-red-500 text-white text-xs px-3 py-1 rounded hover:bg-red-600 transition-colors">
+                      Cancelar
+                    </button>
+                    <button 
+                      v-else
+                      @click="showFeatureLimitedMessage('appointments')"
+                      class="text-xs text-gray-500 underline hover:no-underline">
+                      Gestionar cita (Pro)
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- ✅ SECCIONES PRO -->
-            <div v-else-if="['schedule', 'patients', 'reports'].includes(activeSection)" class="p-6">
-              <div class="text-center py-12">
-                <div class="text-6xl mb-4">
-                  {{ activeSection === 'schedule' ? '📅' : activeSection === 'patients' ? '👥' : '📊' }}
-                </div>
-                <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                  {{ activeSection === 'schedule' ? 'Gestión de Horarios' : activeSection === 'patients' ? 'Base de Datos de Pacientes' : 'Reportes y Estadísticas' }}
-                </h3>
+            <!-- ✅ PACIENTES (REQUIERE PLAN) -->
+            <div v-else-if="activeSection === 'patients'" class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Base de Datos de Pacientes</h2>
+              
+              <div v-if="!hasActivePlan" class="text-center py-12">
+                <div class="text-6xl mb-4">👥</div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Gestión Completa de Pacientes</h3>
                 <p class="text-gray-600 mb-6">
-                  Esta funcionalidad avanzada está disponible con el Plan Profesional.
+                  Mantén un registro completo de todos tus pacientes con historiales médicos, tratamientos y seguimientos.
                 </p>
                 <button 
                   @click="upgradeSubscription"
                   class="bg-[var(--blue-1)] text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-medium">
-                  Actualizar a Plan Pro
+                  Desbloquear Gestión de Pacientes
                 </button>
+              </div>
+              
+              <div v-else>
+                <!-- Aquí iría tu componente de gestión de pacientes -->
+                <p class="text-gray-600">Funcionalidad de gestión de pacientes completa aquí...</p>
               </div>
             </div>
 
-            <!-- ✅ OTRAS SECCIONES -->
-            <div v-else class="p-6">
-              <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                {{ sections.find(s => s.id === activeSection)?.name || 'Sección' }}
-              </h2>
-              <div class="bg-gray-50 p-8 rounded-lg text-center">
-                <p class="text-gray-600">Funcionalidad en desarrollo...</p>
+            <!-- ✅ REPORTES (REQUIERE PLAN) -->
+            <div v-else-if="activeSection === 'reports'" class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Reportes y Estadísticas</h2>
+              
+              <div v-if="!hasActivePlan" class="text-center py-12">
+                <div class="text-6xl mb-4">📊</div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Reportes Avanzados</h3>
+                <p class="text-gray-600 mb-6">
+                  Accede a estadísticas detalladas, reportes financieros y análisis de rendimiento de tu práctica médica.
+                </p>
+                <button 
+                  @click="upgradeSubscription"
+                  class="bg-[var(--blue-1)] text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-medium">
+                  Desbloquear Reportes
+                </button>
+              </div>
+              
+              <div v-else>
+                <!-- Reportes completos -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div class="border rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">Ingresos Mensuales</h3>
+                    <div class="h-48 bg-gray-100 rounded flex items-center justify-center">
+                      <p class="text-gray-500">Gráfico de ingresos</p>
+                    </div>
+                  </div>
+                  
+                  <div class="border rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">Citas por Mes</h3>
+                    <div class="h-48 bg-gray-100 rounded flex items-center justify-center">
+                      <p class="text-gray-500">Gráfico de citas</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ✅ NOTIFICACIONES -->
+            <div v-else-if="activeSection === 'notifications'" class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Notificaciones</h2>
+              <Panel_user_notifications />
+            </div>
+
+            <!-- ✅ CONFIGURACIÓN -->
+            <div v-else-if="activeSection === 'settings'" class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Configuración</h2>
+              
+              <div class="space-y-6">
+                <div class="border rounded-lg p-6">
+                  <h3 class="text-lg font-semibold mb-4">Información de la Cuenta</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                      <input 
+                        type="text" 
+                        :value="currentUser?.names" 
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
+                        readonly>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
+                      <input 
+                        type="text" 
+                        :value="currentUser?.lastnames" 
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
+                        readonly>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input 
+                        type="email" 
+                        :value="currentUser?.email" 
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
+                        readonly>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Cuenta</label>
+                      <input 
+                        type="text" 
+                        value="Especialista Profesional" 
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
+                        readonly>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border rounded-lg p-6">
+                  <h3 class="text-lg font-semibold mb-4">Plan y Suscripción</h3>
+                  <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p class="font-medium">{{ hasActivePlan ? 'Plan Profesional' : 'Plan Gratuito' }}</p>
+                      <p class="text-sm text-gray-600">
+                        {{ hasActivePlan ? 'Acceso completo a todas las funcionalidades' : 'Acceso limitado a funcionalidades básicas' }}
+                      </p>
+                    </div>
+                    <button 
+                      v-if="!hasActivePlan"
+                      @click="upgradeSubscription"
+                      class="bg-[var(--blue-1)] text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors font-medium">
+                      Actualizar Plan
+                    </button>
+                    <div v-else class="text-right">
+                      <span class="bg-green-100 text-green-800 px-3 py-1 rounded text-sm font-medium">
+                        ✓ Activo
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -674,12 +892,7 @@ const getSubscriptionStatusText = () => {
       </div>
     </div>
     
-    <!-- ✅ FOOTER SIMPLE (reemplazar cuando esté disponible) -->
-    <footer class="bg-white border-t border-gray-200 py-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p class="text-gray-500">© 2024 DocVisual. Todos los derechos reservados.</p>
-      </div>
-    </footer>
+    <Footer_Color color="var(--blue-1)" />
   </div>
 </template>
 
