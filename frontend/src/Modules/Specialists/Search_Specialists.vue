@@ -10,6 +10,7 @@ import SpecialistDataMock from '@/Modules/Specialists/Mocks/SpecialistDataMock.j
 import type { Specialist } from '@/Modules/Specialists/Specialist';
 import Swal from 'sweetalert2';
 import { getDepartmentFromCoords } from '@/utils/geocoding';
+import { services } from '@/Modules/Specialists/DataFilters/services';
 
 export default {
     name: 'Search_Specialists',
@@ -203,6 +204,7 @@ export default {
             citys,
             clearFilters,
             isLoading,
+            services,
             items: SpecialistDataMock as unknown as user_professional_search_dto[],
             filterSpecialty: [] as string[],
             filterLocation: [] as string[],
@@ -363,7 +365,13 @@ export default {
                             </div>
                             <Transition name="fade">
                                 <div v-if="state.panels.panelService" class="w-full max-h-40 overflow-y-auto">
-                                    <p class="text-gray-600 mb-4">Selecciona los servicios que necesitas:</p>
+                                    <div v-for="(option, index) in services" :key="index" class="flex w-full my-2"
+                                        @click="selectService(option)">
+                                        <input type="checkbox" :id="'mobile-service-checkbox-' + index"
+                                            :checked="isServiceSelected(option)" :value="option"
+                                            class="w-5 h-5 mx-2 colorvar pointer-events-none accent-[var(--blue-1)]">
+                                        <h1 class="mt-auto cursor-pointer">{{ option }}</h1>
+                                    </div>
                                 </div>
                             </Transition>
                         </div>
@@ -485,7 +493,13 @@ export default {
                             </div>
                             <Transition name="fade">
                                 <div v-if="state.panels.panelService" class="w-full max-h-40 overflow-y-auto">
-                                    <p class="text-gray-600 mb-4">Selecciona los servicios que necesitas:</p>
+                                    <div v-for="(option, index) in services" :key="index" class="flex w-full my-2"
+                                        @click="selectService(option)">
+                                        <input type="checkbox" :id="'desktop-service-checkbox-' + index"
+                                            :checked="isServiceSelected(option)" :value="option"
+                                            class="w-5 h-5 mx-2 colorvar pointer-events-none accent-[var(--blue-1)]">
+                                        <h1 class="mt-auto cursor-pointer">{{ option }}</h1>
+                                    </div>
                                 </div>
                             </Transition>
                         </div>
