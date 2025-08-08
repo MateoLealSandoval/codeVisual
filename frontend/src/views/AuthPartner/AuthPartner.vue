@@ -290,6 +290,29 @@ export default {
                 };
                 try {
                     await this.store.userAuth(logindata);
+
+                    // ✅ Si el login fue exitoso, verificar si es paciente (USER)
+            if (this.store.user?.role === 'USER') {
+                // 🚫 Si es paciente, cerrar sesión inmediatamente y mostrar mensaje
+                await this.store.close_session();
+                
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Acceso Restringido',
+                    html: 'Este tipo de usuario debe acceder desde:<br><strong>Acceso a Pacientes</strong>',
+                    confirmButtonColor: blueColor,
+                    confirmButtonText: 'Ir a Pacientes',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.$router.push('/auth');
+                    }
+                });
+                return;
+            }
+            
+            // ✅ Si no es paciente (es especialista o admin), continuar normal
                     await Swal.fire({
                         icon: 'success',
                         title: 'Autenticación Completada',
