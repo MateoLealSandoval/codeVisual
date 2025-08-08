@@ -171,7 +171,7 @@ export default {
             state.filterService = [];
         };
 
-        <!-- Función para manejar Enter -->
+        // Función para manejar Enter
         function handleEnter(event: KeyboardEvent) {
             if (event.key === 'Enter') {
                 load_data();
