@@ -4,3 +4,4 @@
 /public
 /private
 .env
+.DS_Store

@@ -2,318 +2,341 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { envs, NATS_SERVICE } from 'src/config';
-import * as jwt from 'jsonwebtoken'
+import * as jwt from 'jsonwebtoken';
 import { create_reservation_dto } from '../dto/create_reservation.dto';
-import { formatDateForCalendar, sendEmail } from 'src/email/utils/send_email'
+import { formatDateForCalendar, sendEmail } from 'src/email/utils/send_email';
 import { firstValueFrom } from 'rxjs';
 import { getNotification, NotificationDto, SendEmailsDto } from '../dto';
 import { reservation_email_dto } from '../dto/reservations';
 import { sendEmailEditReservation } from '../utils/messages.emails';
 import { formatDateTimeEs, formatHumanDateCO } from '../utils/date';
-
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class EmailService extends PrismaClient implements OnModuleInit {
-    constructor(
-        @Inject(NATS_SERVICE) private readonly client: ClientProxy,
-    ) {
-        super()
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {
+    super();
+  }
+
+  private readonly logger = new Logger('email_microservice');
+  private readonly jwtSecret = envs.jwtSecret;
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async sendEmail(SendEmailDto: SendEmailsDto) {
+    try {
+      const { email, subject, text, names } = SendEmailDto;
+      const createdHtml = this.generateEmailHtml(names, email, subject, text);
+      sendEmail('hola@docvisual.co', subject, createdHtml);
+      return {
+        status: 200,
+        message: 'Email enviado correctamente',
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message,
+      });
     }
+  }
 
-    private readonly logger = new Logger('email_microservice');
-    private readonly jwtSecret = envs.jwtSecret;
-    async onModuleInit() {
-        await this.$connect();
+  async create_reservation_token(createReservationDto: create_reservation_dto) {
+    try {
+      const {
+        date,
+        officeId,
+        payment,
+        price,
+        profecionalId,
+        scheduleId,
+        userId,
+      } = createReservationDto;
+      // generate confirmation code
+      const confirmationCode = Math.floor(1000 + Math.random() * 9000); // generate a 4 digit code
+      const token = jwt.sign(
+        {
+          date,
+          officeId,
+          payment,
+          price,
+          profecionalId,
+          scheduleId,
+          confirmationCode,
+          userId,
+        }, // Payload
+        this.jwtSecret, // password secret
+        { expiresIn: '10m' },
+      );
 
+      //get user email
+      const dataUser = await firstValueFrom(
+        this.client.send('auth.get.basic.user.basic', {
+          id: userId,
+        }),
+      );
+      const newHtml = this.generateEmailHtml_reservation(
+        confirmationCode,
+        `${dataUser.data.names} ${dataUser.data.lastnames}`,
+      );
+
+      sendEmail(dataUser.data.email, 'Confirmación de reserva', newHtml);
+
+      return {
+        status: 200,
+        token,
+        code: confirmationCode,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message,
+      });
     }
+  }
 
-    async sendEmail(SendEmailDto: SendEmailsDto) {
-        try {
-            const { email, subject, text, names } = SendEmailDto;
-            const createdHtml = this.generateEmailHtml(names, email, subject, text);
-            sendEmail('hola@docvisual.co', subject, createdHtml);
-            return {
-                status: 200,
-                message: 'Email enviado correctamente',
-            }
-        } catch (error) {
-
-            throw new RpcException({
-                status: 400,
-                message: error.message
-            })
-        }
+  async reset_password_by_email(email: string) {
+    try {
+      const userByEmail = await firstValueFrom(
+        this.client.send('auth.verify.email.basic.user', {
+          email: email,
+        }),
+      );
+      if (userByEmail.data == true) {
+        const token = jwt.sign(
+          { email }, // Payload
+          this.jwtSecret, // password secret
+          { expiresIn: '12h' },
+        );
+        const html = this.generateHtml_reset_password(token);
+        sendEmail(email, 'Restablecer la contraseña doc visual', html);
+        return {
+          status: 200,
+          data: 'correo enviado correctamente',
+        };
+      } else {
+        throw new RpcException({
+          status: 400,
+          message: 'No existe este correo',
+        });
+      }
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message,
+      });
     }
+  }
 
-
-    async create_reservation_token(createReservationDto: create_reservation_dto) {
-        try {
-            const { date, officeId, payment, price, profecionalId, scheduleId, userId } = createReservationDto;
-            // generate confirmation code
-            const confirmationCode = Math.floor(1000 + Math.random() * 9000); // generate a 4 digit code
-            const token = jwt.sign(
-                { date, officeId, payment, price, profecionalId, scheduleId, confirmationCode, userId }, // Payload
-                this.jwtSecret, // password secret 
-                { expiresIn: '10m' }
-            );
-
-            //get user email
-            const dataUser = await firstValueFrom(
-                this.client.send('auth.get.basic.user.basic', {
-                    id: userId,
-                })
-            );
-            const newHtml = this.generateEmailHtml_reservation(confirmationCode, `${dataUser.data.names} ${dataUser.data.lastnames}`);
-
-            sendEmail(dataUser.data.email, 'Confirmación de reserva', newHtml);
-
-            return {
-                status: 200,
-                token,
-                code: confirmationCode,
-            };
-
-        } catch (error) {
-
-            throw new RpcException({
-                status: 400,
-                message: error.message
-            })
-        }
+  async resetPassword(token: string, newPassword: string) {
+    try {
+      const decoded = jwt.verify(token, this.jwtSecret) as {
+        email: string;
+      };
+      const resetResponse = await firstValueFrom(
+        this.client.send('auth.reset.password.by.email', {
+          email: decoded.email,
+          password: newPassword,
+        }),
+      );
+      return {
+        status: 200,
+        data: resetResponse,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message,
+      });
     }
+  }
 
-    async reset_password_by_email(email: string) {
-        try {
+  async validate_confirmation_code(
+    token: string,
+    confirmationCode: number,
+    idUser: string,
+  ) {
+    try {
+      // verify the token
+      const decoded = jwt.verify(token, this.jwtSecret) as {
+        date: string;
+        officeId: string;
+        payment: string;
+        price: string;
+        profecionalId: string;
+        scheduleId: string;
+        confirmationCode: number;
+        userId: string;
+      };
 
-            const userByEmail = await firstValueFrom(
-                this.client.send('auth.verify.email.basic.user', {
-                    email: email,
-                })
-            );
-            if (userByEmail.data == true) {
-                const token = jwt.sign(
-                    { email }, // Payload
-                    this.jwtSecret, // password secret 
-                    { expiresIn: '12h' }
-                );
-                const html = this.generateHtml_reset_password(token)
-                sendEmail(email, "Restablecer la contraseña doc visual", html)
-                return {
-                    status: 200,
-                    data: "correo enviado correctamente"
-                }
+      if (decoded.userId !== idUser) {
+        throw new RpcException({
+          status: 400,
+          message: 'El id de usuario no coincide',
+        });
+      }
 
+      // validate the confirmation code
+      if (decoded.confirmationCode !== confirmationCode) {
+        throw new RpcException({
+          status: 400,
+          message: 'El código de confirmación no coincide',
+        });
+      }
+      const reservationdata: create_reservation_dto = {
+        date: decoded.date,
+        officeId: decoded.officeId,
+        payment: decoded.payment,
+        price: Number(decoded.price),
+        profecionalId: decoded.profecionalId,
+        scheduleId: decoded.scheduleId,
+        userId: decoded.userId,
+      };
 
-            } else {
-                throw new RpcException({
-                    status: 400,
-                    message: "No existe este correo"
-                })
-            }
+      const reservation = await firstValueFrom(
+        this.client.send<ReservationResponseDto>(
+          'create.reservation.user',
+          reservationdata,
+        ),
+      );
 
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message
-            })
-        }
+      const dateresponse = new Date(reservation.data.date);
+      const endDate = new Date(dateresponse); // Copia de la fecha inicial
+      endDate.setMinutes(dateresponse.getMinutes() + 30);
+
+      const startDateFormatted = formatDateForCalendar(dateresponse);
+      const startDateHumand = formatHumanDateCO(dateresponse);
+      const endDateFormatted = formatDateForCalendar(endDate);
+      const endDateHumand = formatHumanDateCO(endDate);
+
+      // Agregar 30 minuto
+      const year = dateresponse.getUTCFullYear(); // Año
+      const month = dateresponse.getUTCMonth() + 1; // Mes (0-11, por eso se suma 1)
+      const day = dateresponse.getUTCDate(); // Día
+      const hours = dateresponse.getUTCHours(); // Hora
+      const minutes = dateresponse.getMinutes();
+      if (reservation.status !== 200) {
+        throw new RpcException({
+          status: 400,
+          message: 'No se pudo crear la reserva',
+        });
+      }
+      const dataUser = await firstValueFrom(
+        this.client.send('auth.get.basic.user.basic', {
+          id: decoded.userId,
+        }),
+      );
+      const dataProfessional = await firstValueFrom(
+        this.client.send('auth.get.basic.user.basic', {
+          id: decoded.profecionalId,
+        }),
+      );
+      const office = await firstValueFrom(
+        this.client.send<ProfessionalResponse>('get.id.office.and.partner', {
+          id: reservation.data.profecionalId,
+          idOffice: reservation.data.officeId,
+        }),
+      );
+      // Validar que office.offices[0] exista
+
+      const namePorfeccional = `${dataProfessional.data.names}  ${dataProfessional.data.lastnames}`;
+      const nameUser = `${dataUser.data.names}  ${dataUser.data.lastnames}`;
+      if (
+        !office ||
+        !Array.isArray(office.data.offices) ||
+        office.data.offices.length === 0
+      ) {
+        throw new RpcException({
+          status: 400,
+          message: 'No se encontraron oficinas asociadas al profesional',
+        });
+      }
+      const location = `${office.data.offices[0].description}`;
+      const cordinates = `${office.data.offices[0].latitude}, ${office.data.offices[0].longitude}`;
+      const safeLocation = encodeURIComponent(location);
+      const datetext = formatDateTimeEs(year, month, day, hours, minutes);
+      const html = this.generateEmailHtml_remember(
+        office.data.name,
+        day,
+        month,
+        year,
+        hours,
+        location,
+        reservation.data.payment,
+        startDateFormatted,
+        endDateFormatted,
+        safeLocation,
+        namePorfeccional,
+        cordinates,
+        datetext,
+      );
+
+      const htmlProfessional = this.generateEmailHtml_remember(
+        office.data.name,
+        day,
+        month,
+        year,
+        hours,
+        location,
+        reservation.data.payment,
+        startDateFormatted,
+        endDateFormatted,
+        safeLocation,
+        nameUser,
+        cordinates,
+        datetext,
+      );
+
+      sendEmail(
+        dataUser.data.email,
+        'Confirmacion de tu cita en DocVisual',
+        html,
+      );
+      sendEmail(
+        dataProfessional.data.email,
+        'Cita programada Doc visual',
+        htmlProfessional,
+      );
+
+      const createNotificationUser: NotificationDto = {
+        title: 'Cita Programada',
+        message: `Tienes una cita con el optómetra ${namePorfeccional} en la fecha ${startDateHumand}`,
+        userId: decoded.userId,
+      };
+      const createNotificationProfessional: NotificationDto = {
+        title: 'Cita Programada',
+        message: `Tienes una cita con el usuario ${dataUser.data.names} en la fecha ${startDateHumand}`,
+        userId: decoded.profecionalId,
+      };
+      this.CreateNotification(createNotificationUser);
+      this.CreateNotification(createNotificationProfessional);
+
+      const responsetext = `oficina:${location} , fecha:${datetext} ,con el profesional ${office.data.name} `;
+      return {
+        status: 200,
+        message: 'El código de confirmación es válido',
+        data: responsetext,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Token inválido',
+      });
     }
+  }
 
-    async resetPassword(token: string, newPassword: string) {
-        try {
-            const decoded = jwt.verify(token, this.jwtSecret) as {
-                email: string;
-            };
-            const resetResponse = await firstValueFrom(this.client.send('auth.reset.password.by.email', {
-                email: decoded.email,
-                password: newPassword
-            }))
-            return {
-                status: 200,
-                data: resetResponse
-            }
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message
-            })
-        }
-    }
+  private generateEmailHtml(
+    username: string,
+    email: string,
+    subject: string,
 
-
-    async validate_confirmation_code(token: string, confirmationCode: number, idUser: string) {
-        try {
-            // verify the token
-            const decoded = jwt.verify(token, this.jwtSecret) as {
-                date: string;
-                officeId: string;
-                payment: string;
-                price: string;
-                profecionalId: string;
-                scheduleId: string;
-                confirmationCode: number;
-                userId: string;
-            };
-
-            if (decoded.userId !== idUser) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'El id de usuario no coincide',
-                });
-            }
-
-
-            // validate the confirmation code
-            if (decoded.confirmationCode !== confirmationCode) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'El código de confirmación no coincide',
-                });
-            }
-            const reservationdata: create_reservation_dto = {
-                date: decoded.date,
-                officeId: decoded.officeId,
-                payment: decoded.payment,
-                price: Number(decoded.price),
-                profecionalId: decoded.profecionalId,
-                scheduleId: decoded.scheduleId,
-                userId: decoded.userId
-            }
-
-            const reservation = await firstValueFrom(
-                this.client.send<ReservationResponseDto>('create.reservation.user', reservationdata)
-            )
-
-
-            const dateresponse = new Date(reservation.data.date);
-            const endDate = new Date(dateresponse); // Copia de la fecha inicial
-            endDate.setMinutes(dateresponse.getMinutes() + 30);
-
-            const startDateFormatted = formatDateForCalendar(dateresponse);
-            const startDateHumand = formatHumanDateCO(dateresponse);
-            const endDateFormatted = formatDateForCalendar(endDate);
-            const endDateHumand = formatHumanDateCO(endDate);
-
-
-
-            // Agregar 30 minuto
-            const year = dateresponse.getUTCFullYear(); // Año
-            const month = dateresponse.getUTCMonth() + 1; // Mes (0-11, por eso se suma 1)
-            const day = dateresponse.getUTCDate(); // Día
-            const hours = dateresponse.getUTCHours(); // Hora
-            const minutes = dateresponse.getMinutes();
-            if (reservation.status !== 200) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'No se pudo crear la reserva',
-                });
-            }
-            const dataUser = await firstValueFrom(
-                this.client.send('auth.get.basic.user.basic', {
-                    id: decoded.userId,
-                })
-            );
-            const dataProfessional = await firstValueFrom(
-                this.client.send('auth.get.basic.user.basic', {
-                    id: decoded.profecionalId
-                })
-            )
-            const office = await firstValueFrom(
-                this.client.send<ProfessionalResponse>('get.id.office.and.partner', { id: reservation.data.profecionalId, idOffice: reservation.data.officeId })
-            );
-            // Validar que office.offices[0] exista
-
-
-            const namePorfeccional = `${dataProfessional.data.names}  ${dataProfessional.data.lastnames}`
-            const nameUser = `${dataUser.data.names}  ${dataUser.data.lastnames}`
-            if (!office || !Array.isArray(office.data.offices) || office.data.offices.length === 0) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'No se encontraron oficinas asociadas al profesional',
-                });
-            }
-            const location = `${office.data.offices[0].description}`;
-            const cordinates = `${office.data.offices[0].latitude}, ${office.data.offices[0].longitude}`;
-            const safeLocation = encodeURIComponent(location);
-            const datetext = formatDateTimeEs(year, month, day, hours, minutes)
-            const html = this.generateEmailHtml_remember(
-                office.data.name,
-                day,
-                month,
-                year,
-                hours,
-                location,
-                reservation.data.payment,
-                startDateFormatted,
-                endDateFormatted,
-                safeLocation,
-                namePorfeccional,
-                cordinates,
-                datetext
-            );
-
-            const htmlProfessional = this.generateEmailHtml_remember(
-                office.data.name,
-                day,
-                month,
-                year,
-                hours,
-                location,
-                reservation.data.payment,
-                startDateFormatted,
-                endDateFormatted,
-                safeLocation,
-                nameUser,
-                cordinates,
-                datetext
-            );
-
-            sendEmail(dataUser.data.email, 'Confirmacion de tu cita en DocVisual', html);
-            sendEmail(dataProfessional.data.email, 'Cita programada Doc visual', htmlProfessional)
-
-            const createNotificationUser: NotificationDto = {
-                title: "Cita Programada",
-                message: `Tienes una cita con el optómetra ${namePorfeccional} en la fecha ${startDateHumand}`,
-                userId: decoded.userId
-            }
-            const createNotificationProfessional: NotificationDto = {
-                title: "Cita Programada",
-                message: `Tienes una cita con el usuario ${dataUser.data.names} en la fecha ${startDateHumand}`,
-                userId: decoded.profecionalId
-            }
-            this.CreateNotification(createNotificationUser)
-            this.CreateNotification(createNotificationProfessional)
-
-            const responsetext = `oficina:${location} , fecha:${datetext} ,con el profesional ${office.data.name} `
-            return {
-                status: 200,
-                message: 'El código de confirmación es válido',
-                data: responsetext
-            };
-
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message || 'Token inválido',
-            });
-        }
-    }
-
-
-
-    private generateEmailHtml(
-        username: string,
-        email: string,
-        subject: string,
-
-        text: string,
-
-    ): string {
-        const now = new Date();
-        const day = now.getDate().toString().padStart(2, '0');
-        const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Mes es 0-indexado
-        const year = now.getFullYear();
-        return `
+    text: string,
+  ): string {
+    const now = new Date();
+    const day = now.getDate().toString().padStart(2, '0');
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Mes es 0-indexado
+    const year = now.getFullYear();
+    return `
     <div
       style="font-family: Arial, sans-serif; line-height: 1.6; text-align: center; width: 100%; background-color: #f9f9f9; padding: 20px;">
       <table style="max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
@@ -360,40 +383,35 @@ export class EmailService extends PrismaClient implements OnModuleInit {
       </table>
     </div>
   `;
-    }
+  }
 
+  private generateEmailHtml_remember(
+    userName: string,
+    day: number,
+    month: number,
+    year: number,
+    hour: number,
+    adress: string,
+    payment: string,
+    startDate: string,
+    endDate: string,
+    consultorio: string,
+    nameProfessional: string,
+    cordinates: string,
+    datetext: string,
+  ): string {
+    const rawDate = new Date(year, month - 1, day, hour);
+    const formattedDate = rawDate.toLocaleString('es-CO', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
 
-
-
-    private generateEmailHtml_remember(
-        userName: string,
-        day: number,
-        month: number,
-        year: number,
-        hour: number,
-        adress: string,
-        payment: string,
-        startDate: string,
-        endDate: string,
-        consultorio: string,
-        nameProfessional: string,
-        cordinates: string,
-        datetext: string
-    ): string {
-
-        const rawDate = new Date(year, month - 1, day, hour);
-        const formattedDate = rawDate.toLocaleString('es-CO', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-
-
-        return `
+    return `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; text-align: center; width: 100%; background-color: #f9f9f9; padding: 20px;">
             <table style="max-width: 600px; margin: 0 auto;   border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
                 <tr>
@@ -439,12 +457,13 @@ export class EmailService extends PrismaClient implements OnModuleInit {
                 </tr>
             </table>
         </div>`;
-    }
+  }
 
-
-
-    private generateEmailHtml_reservation(confirmationCode: number, userName: string): string {
-        return `
+  private generateEmailHtml_reservation(
+    confirmationCode: number,
+    userName: string,
+  ): string {
+    return `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; text-align: center; width: 100%; background-color: #f9f9f9; padding: 20px;">
             <table style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
                 <tr>
@@ -469,13 +488,12 @@ export class EmailService extends PrismaClient implements OnModuleInit {
             </table>
         </div>
         `;
-    }
+  }
 
-
-    private generateHtml_reset_password(tokenreset: string) {
-        const url = "https://www.docvisual.co/reset/"
-        const urlAndToken = url + tokenreset
-        return `
+  private generateHtml_reset_password(tokenreset: string) {
+    const url = 'https://www.docvisual.co/reset/';
+    const urlAndToken = url + tokenreset;
+    return `
             <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px; text-align: center;">
         <table style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; padding: 30px;">
             <tr>
@@ -503,175 +521,237 @@ export class EmailService extends PrismaClient implements OnModuleInit {
                 </td>
             </tr>
         </table>
-    </div>`
+    </div>`;
+  }
+  // notifications
+  async getNotificationPendings(id: string) {
+    try {
+      if (!id) {
+        throw new RpcException({
+          status: 400,
+          message: 'El ID del usuario es requerido',
+        });
+      }
+
+      const total = await this.notification.count({
+        where: {
+          userId: id,
+          state: 'CLOSE', // Asegúrate que el valor 'CLOSE' es correcto según tu modelo
+        },
+      });
+
+      return {
+        status: 200,
+        data: total,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 500,
+        message:
+          error?.message || 'Error interno al contar notificaciones pendientes',
+      });
     }
-    // notifications 
-    async getNotificationPendings(id: string) {
-        try {
-            if (!id) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'El ID del usuario es requerido',
-                });
-            }
+  }
 
-            const total = await this.notification.count({
-                where: {
-                    userId: id,
-                    state: 'CLOSE', // Asegúrate que el valor 'CLOSE' es correcto según tu modelo
-                },
-            });
+  async getNotificationsUser(getNotification: getNotification) {
+    try {
+      const { idUser, limit, page } = getNotification;
+      const currentPage = page ?? 1;
+      const perPage = limit ?? 10;
+      const total = await this.notification.count({
+        where: {
+          userId: idUser,
+        },
+      });
+      const result = await this.notification.findMany({
+        skip: (currentPage - 1) * perPage,
+        take: perPage,
+        where: {
+          userId: idUser,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
 
-            return {
-                status: 200,
-                data: total,
-            };
-        } catch (error) {
-            throw new RpcException({
-                status: 500,
-                message: error?.message || 'Error interno al contar notificaciones pendientes',
-            });
-        }
+      return {
+        status: 200,
+        data: result,
+        meta: {
+          total,
+          page: currentPage,
+          lastPage: Math.ceil(total / perPage),
+        },
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Token inválido',
+      });
     }
-
-
-
-
-    async getNotificationsUser(getNotification: getNotification) {
-        try {
-            const { idUser, limit, page } = getNotification;
-            const currentPage = page ?? 1;
-            const perPage = limit ?? 10;
-            const total = await this.notification.count({
-                where: {
-                    userId: idUser
-                }
-            });
-            const result = await this.notification.findMany({
-                skip: (currentPage - 1) * perPage,
-                take: perPage,
-                where: {
-                    userId: idUser
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            });
-
-            return {
-                status: 200,
-                data: result,
-                meta: {
-                    total,
-                    page: currentPage,
-                    lastPage: Math.ceil(total / perPage)
-                }
-            }
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message || 'Token inválido',
-            });
-        }
+  }
+  /**
+   * * create notification
+   * ! create new notification state init close
+   * @param NotificationDto
+   */
+  async CreateNotification(NotificationDto: NotificationDto) {
+    try {
+      const { message, title, userId } = NotificationDto;
+      /**
+       * ! check userId
+       */
+      const dataUser = await firstValueFrom(
+        this.client.send('auth.get.basic.user.basic', {
+          id: userId,
+        }),
+      );
+      if (dataUser.status !== 200) {
+        throw new RpcException({
+          status: 400,
+          message: 'no se encontro el usuario',
+        });
+      }
+      const newNotification = await this.notification.create({
+        data: {
+          message: message,
+          title: title,
+          userId: userId,
+          state: 'CLOSE',
+        },
+      });
+      return {
+        status: 200,
+        data: newNotification,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Token inválido',
+      });
     }
-    /**
-     * * create notification
-     * ! create new notification state init close
-     * @param NotificationDto
-     */
-    async CreateNotification(NotificationDto: NotificationDto) {
-        try {
-            const { message, title, userId } = NotificationDto;
-            /**
-             * ! check userId
-             */
-            const dataUser = await firstValueFrom(
-                this.client.send('auth.get.basic.user.basic', {
-                    id: userId,
-                })
-            );
-            if (dataUser.status !== 200) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'no se encontro el usuario',
-                });
-            }
-            const newNotification = await this.notification.create({
-                data: {
-                    message: message,
-                    title: title,
-                    userId: userId,
-                    state: 'CLOSE'
-                }
-            })
-            return {
-                status: 200,
-                data: newNotification
-            }
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message || 'Token inválido',
-            });
-        }
+  }
+  async getNotification(id: string, userId: string) {
+    try {
+      const notification = await this.notification.findFirst({
+        where: {
+          id: id,
+          userId: userId,
+        },
+      });
+      if (!notification) {
+        throw new RpcException({
+          status: 400,
+          message: 'No se encontró la notificación con el usuario respectivo.',
+        });
+      }
+      if (notification.state === 'CLOSE') {
+        await this.notification.update({
+          where: {
+            id: id,
+            userId: userId,
+          },
+          data: {
+            state: 'OPEN',
+          },
+        });
+      }
+      return {
+        status: 200,
+        data: notification,
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Token inválido',
+      });
     }
-    async getNotification(id: string, userId: string) {
-        try {
-            const notification = await this.notification.findFirst({
-                where: {
-                    id: id,
-                    userId: userId
-                }
-            });
-            if (!notification) {
-                throw new RpcException({
-                    status: 400,
-                    message: 'No se encontró la notificación con el usuario respectivo.'
-                });
-            }
-            if (notification.state === 'CLOSE') {
-                await this.notification.update({
-                    where: {
-                        id: id,
-                        userId: userId
-                    },
-                    data: {
-                        state: 'OPEN'
-                    }
-                })
-            }
-            return {
-                status: 200,
-                data: notification
-            }
-        } catch (error) {
-            throw new RpcException({
-                status: 400,
-                message: error.message || 'Token inválido',
-            });
-        }
+  }
+
+  async sendEmailUpdateReservation(SendEmailDto: SendEmailsDto) {
+    try {
+      const { subject, email } = SendEmailDto;
+      const createHtml = sendEmailEditReservation(SendEmailDto);
+      await sendEmail(
+        email,
+        subject ? subject : 'Actualización de reserva. ',
+        createHtml,
+      );
+      return {
+        status: 200,
+        message: 'Email enviado correctamente',
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message,
+      });
     }
+  }
 
+  // Cron job para recordatorios diarios a las 9:00 AM
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendDailyReminders() {
+    try {
+      console.log('Iniciando envío de recordatorios de citas...');
 
-    async sendEmailUpdateReservation(SendEmailDto: SendEmailsDto) {
-        try {
-            const { subject, email } = SendEmailDto;
-            const createHtml = sendEmailEditReservation(SendEmailDto);
-            await sendEmail(email, subject ? subject : "Actualización de reserva. ", createHtml)
-            return {
-                status: 200,
-                message: 'Email enviado correctamente',
-            }
-        } catch (error) {
+      // Obtener fecha de mañana
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
 
-            throw new RpcException({
-                status: 400,
-                message: error.message
-            })
-        }
+      const tomorrowEnd = new Date(tomorrow);
+      tomorrowEnd.setHours(23, 59, 59, 999);
+
+      // Obtener reservaciones de mañana
+      const reservations = await firstValueFrom(
+        this.client.send('get.tomorrow.reservations', {
+          startDate: tomorrow,
+          endDate: tomorrowEnd,
+        }),
+      );
+
+      console.log(`Encontradas ${reservations.length} citas para recordar`);
+
+      // Enviar recordatorio para cada cita
+      for (const reservation of reservations) {
+        await this.sendAppointmentReminder(reservation);
+      }
+
+      console.log('Recordatorios enviados exitosamente');
+    } catch (error) {
+      console.error('Error enviando recordatorios:', error);
     }
+  }
 
+  // Método auxiliar para enviar recordatorio individual
+  private async sendAppointmentReminder(reservation: any) {
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #36b6f1;">Recordatorio de Cita - DocVisual</h2>
+        <p>Hola ${reservation.patientName},</p>
+        <p>Te recordamos que tienes una cita mañana:</p>
+        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Especialista:</strong> ${reservation.professionalName}</p>
+          <p><strong>Fecha:</strong> ${reservation.date}</p>
+          <p><strong>Hora:</strong> ${reservation.time}</p>
+          <p><strong>Lugar:</strong> ${reservation.location}</p>
+        </div>
+        <p>Por favor, llega 10 minutos antes de tu cita.</p>
+        <p>Si necesitas cancelar o reprogramar, hazlo con al menos 24 horas de anticipación.</p>
+        <p>Saludos,<br>Equipo DocVisual</p>
+      </div>
+    `;
 
+    await this.sendEmail({
+      to: reservation.patientEmail,
+      subject: 'Recordatorio de cita - DocVisual',
+      html: emailHtml,
+    });
 
-
+    // Marcar como enviado
+    await firstValueFrom(
+      this.client.send('mark.reminder.sent', reservation.id),
+    );
+  }
 }

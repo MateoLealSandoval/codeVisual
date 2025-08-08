@@ -3,198 +3,164 @@ import EpaycoComponent from '@/components/EpaycoComponent.vue';
 const goToTerms = () => {
     window.open('/terms', '_blank');
 };
-
 </script>
+
 <template>
-    <div class="w-screen bg-gradient-to-r from-gray-100 to-gray-50 font-poppins text-xs lg:text-base ">
+    <div class="w-screen bg-gradient-to-r from-gray-100 to-gray-50 font-poppins text-xs lg:text-base">
         <div class="container m-auto max-w-[90%]">
             <div class="text-center py-18">
                 <h1 class="text-[var(--blue-1)] text-xl">Soluciones que transforman tu marca</h1>
-                <h1 class="font-bold text-xl">Estamos aquí para ayudarte con tu marca personal
-                </h1>
+                <h1 class="font-bold text-xl">Estamos aquí para ayudarte con tu marca personal</h1>
             </div>
         </div>
-        <div class="container m-auto flex flex-wrap font-poppins justify-between px-8  pb-10">
+        
+        <div class="container m-auto flex flex-wrap font-poppins justify-between px-8 pb-10">
 
-            <div class="w-full md:w-[30%]    ">
-
-
-
-                <hr class="w-[80%] mx-auto border-t-8 border-[var(--blue-1)] " />
+            <!-- PLAN STARTER -->
+            <div class="w-full md:w-[30%]">
+                <hr class="w-[80%] mx-auto border-t-8 border-[var(--blue-1)]" />
                 <div class="w-full border rounded-2xl text-center flex flex-col h-full">
-                    <!-- contenido -->
                     <div class="w-[90%] mx-auto flex-grow">
-                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-[var(--blue-1)] ">Starter</h1>
-                        <h2 class="text-3xl  lg:text-5xl font-bold text-gray-600">$ 2.385.000</h2>
-                        <p class="text-gray-400">mensuales + IVA </p>
+                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-[var(--blue-1)]">Starter</h1>
+                        <h2 class="text-3xl lg:text-5xl font-bold text-gray-600">$ 2.385.000</h2>
+                        <p class="text-gray-400">mensuales (IVA incluido)</p>
+                        
                         <div class="mb-2">
-                            <h1 class="my-3 text-[14px]">Salud visual y especialistas Proposito Recursos Agende su cita
-                                Profesionales Pacientes Inhouse Blog Preguntas frecuentes
-                                Soluciones que transforman tu marca
-                                Estamos aquí para ayudarte con tu marca personal
-                                2025 DocVisual® Todos los derechos reservados
-                                Starter
-                                $ 2.385.000
-                                8 piezas gráficas
-                                personalizadas - (Versión
-                                Post e Historias), alineadas
-                                con la identidad de marca (
-                                Colores, tipografía y estilo).</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3 text-[14px]">8 piezas gráficas personalizadas - (Versión Post e Historias), alineadas con la identidad de marca (Colores, tipografía y estilo).</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3 ">2 Vídeos promocionales o
-                                Reels - Duración: De 30 sg a 3
-                                min (El profesional envía el
-                                material grabado y en
-                                ICÓNICA se edita)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">2 Videos promocionales de hasta 30 segundos de duración (Incluyen Edición, Audio, texto)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">Manejo de redes sociales
-                                (Instagram)
-                                Optimización de redes
-                                sociales
-                                Parrilla de contenido
-                                (organización y planificación
-                                para subir contenido gráfico y
-                                audiovisual en las R.R.S.S.)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">2 Infografías claras e interactivas - Ejemplo: mitos y verdades</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
-
-
-
-
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">1 video promocionales o Reels de hasta 20 seg de duración.</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">Manejo de todas sociales completo (Instagram + TikTok o Facebook o LinkedIn)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">Cronograma de publicación optimizado de los 3 pilares para contenido gráfico y audiovisual en las 2 a 3 plataformas seleccionadas</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">Apoyo en tus procesos de apoyo gratuito con acompañamiento en las 3 a 4 actividades</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
                     </div>
-                    <div class="w-[80%]   mx-auto rounded-xl mb-5">
-                        <EpaycoComponent amount="1071000" name="Plan BÁSICO" description="Plan BÁSICO" />
+                    
+                    <div class="w-[80%] mx-auto rounded-xl mb-5">
+                        <EpaycoComponent amount="2385000" name="Plan STARTER" description="Plan STARTER" />
                     </div>
                 </div>
-
             </div>
 
-            <div class="w-full md:w-[30%] mb-2 min-h-[70vh]   ">
-
-
-
-                <hr class="w-[80%] mx-auto border-t-8 border-amber-500 " />
+            <!-- PLAN PLUS -->
+            <div class="w-full md:w-[30%] mb-2 min-h-[70vh]">
+                <hr class="w-[80%] mx-auto border-t-8 border-amber-500" />
                 <div class="w-full border rounded-2xl text-center flex flex-col h-full">
-                    <!-- contenido -->
                     <div class="w-[90%] mx-auto flex-grow">
-                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-amber-500 ">Plus</h1>
-                        <h2 class="text-3xl  lg:text-5xl font-bold text-gray-600">$ 3.115.000</h2>
-                        <p class="text-gray-400">mensuales (IVA incluido) </p>
+                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-amber-500">Plus</h1>
+                        <h2 class="text-3xl lg:text-5xl font-bold text-gray-600">$ 3.115.000</h2>
+                        <p class="text-gray-400">mensuales (IVA incluido)</p>
+                        
                         <div class="mb-2">
-                            <h1 class="my-3 text-[14px]">10 piezas gráficas
-                                personalizadas - (Versión
-                                Post e Historias), alineadas
-                                con la identidad de marca (
-                                Colores, tipografía y estilo).</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3 text-[14px]">11 piezas gráficas personalizadas - (Versión Post e Historia). Coherentes con la identidad de marca (Colores, tipografía y estilo)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">3 Vídeos promocionales o
-                                Reels - Duración: De 30 sg a 3
-                                min (El profesional envía el
-                                material grabado y en
-                                ICÓNICA se edita)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">3 Videos promocionales o Reels de hasta 20 seg de duración.</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">Manejo de redes sociales
-                                (Instagram y Facebook)
-                                Optimización de redes
-                                sociales
-                                Parrilla de contenido
-                                (organización y planificación
-                                para subir contenido gráfico y
-                                audiovisual en las R.R.S.S.)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">Manejo de redes sociales optimizado (Instagram completo + tiktok + optimización de redes opcionales)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">Diseño de una landing page
-                                con el objetivo de captuar
-                                lead en campañas</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">Pauta de crecimiento para contenido gráfico y audiovisual en las 3 a 4 plataformas seleccionadas</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
-
-                        <!-- este bloque queda FUERA del contenido y pegado al fondo -->
-
-
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">Manejo de todas las redes sociales completo (Instagram + LinkedIn + Facebook o TikTok)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
                     </div>
-                    <div class="w-[80%]   mx-auto rounded-xl mb-5">
-                        <EpaycoComponent amount="1285200" name="Plan ESTÁNDAR" description="Plan ESTÁNDAR" />
+                    
+                    <div class="w-[80%] mx-auto rounded-xl mb-5">
+                        <EpaycoComponent amount="3115000" name="Plan PLUS" description="Plan PLUS" />
                     </div>
                 </div>
-
             </div>
-            <div class="w-full md:w-[30%] mb-2 min-h-[70vh]  ">
 
-
-
-                <hr class="w-[80%] mx-auto border-t-8 border-green-500 " />
+            <!-- PLAN VIP -->
+            <div class="w-full md:w-[30%] mb-2 min-h-[70vh]">
+                <hr class="w-[80%] mx-auto border-t-8 border-green-500" />
                 <div class="w-full border rounded-2xl text-center flex flex-col h-full">
-                    <!-- contenido -->
                     <div class="w-[90%] mx-auto flex-grow">
-                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-green-500 ">VIP</h1>
-                        <h2 class="text-3xl  lg:text-5xl font-bold text-gray-600">$3.945.000</h2>
-			<p class="text-gray-400">mensuales (IVA incluido)</p>
+                        <h1 class="mt-10 text-xl lg:text-3xl font-bold text-green-500">VIP</h1>
+                        <h2 class="text-3xl lg:text-5xl font-bold text-gray-600">$ 3.945.000</h2>
+                        <p class="text-gray-400">mensuales (IVA incluido)</p>
+                        
                         <div class="mb-2">
-                            <h1 class="my-3 text-[14px]">12 piezas gráficas
-                                personalizadas - (Versión
-                                Post e Historias), alineadas
-                                con la identidad de marca (
-                                Colores, tipografía y estilo).</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3 text-[14px]">12 piezas gráficas personalizadas - (Versión Post e Historias). Coherente con la identidad de marca (Colores, tipografía y estilo)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">4 Vídeos promocionales o
-                                Reels - Duración: De 30 sg a 3
-                                min (El profesional envía el
-                                material grabado y en
-                                ICÓNICA se edita)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">2 Videos promocionales o Reels de hasta 20 seg de duración</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">Manejo de redes sociales
-                                (Linkedln o Tiktok)
-                                Optimización de redes
-                                sociales
-                                Parrilla de contenido
-                                (organización y planificación
-                                para subir contenido gráfico y
-                                audiovisual en las R.R.S.S.)</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">Promoción de videos con historias gráficas y reels</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
+                        
                         <div class="mb-2 text-[14px]">
-                            <h1 class="my-3">1 Diseño de una landing page
-                                con el objetivo de captuar
-                                lead en campañas</h1>
-                            <hr class="w-[70%] mx-auto  border-t-2  border-[var(--blue-1)] mb-3" />
+                            <h1 class="my-3">Manejo de todas las redes sociales completo (optimización de redes opcionales)</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
                         </div>
-
-
-
-
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">Pauta de crecimiento para contenido gráfico y audiovisual en las 4 a 5 plataformas seleccionadas</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
+                        
+                        <div class="mb-2 text-[14px]">
+                            <h1 class="my-3">1 Diseño de una landing page con el objetivo de capturar lead en campañas</h1>
+                            <hr class="w-[70%] mx-auto border-t-2 border-[var(--blue-1)] mb-3" />
+                        </div>
                     </div>
-                    <div class="w-[80%]   mx-auto rounded-xl mb-5">
-                        <EpaycoComponent amount="1785000" name="Plan PREMIUM" description="Plan PREMIUM" />
-
-
+                    
+                    <div class="w-[80%] mx-auto rounded-xl mb-5">
+                        <EpaycoComponent amount="3945000" name="Plan VIP" description="Plan VIP" />
                     </div>
                 </div>
-
             </div>
+
         </div>
-        <div class="w-[90%] mx-auto pb-12  ">
-	    <h1 class="text-center mt-10 text-xl lg:text-3xl font-bold text-[var(--blue-1)]">Personalizado</h1>
-            <h1 class="w-full text-center">
-                Si alguno de los paquetes no es lo que estas buscando y necesitas algo mas personalizado,
+        
+        <!-- SECCIÓN PERSONALIZADO -->
+        <div class="w-[90%] mx-auto pb-12">
+            <h1 class="text-center mt-10 text-2xl lg:text-3xl font-bold text-[var(--blue-1)]">Personalizado</h1>
+            <h1 class="w-full text-center mt-4">
+                Si alguno de los paquetes no es lo que estás buscando y necesitas algo más personalizado,
                 CONTÁCTANOS al
                 <span>
                     <a href="https://wa.me/573124967421" target="_blank" rel="noopener noreferrer"
@@ -203,18 +169,19 @@ const goToTerms = () => {
                     </a>
                 </span>
             </h1>
-
-            <h1 class="text-center">
-                y una persona del equipo se pondra en contacto contigo para
+            
+            <h1 class="text-center mt-2">
+                y una persona del equipo se pondrá en contacto contigo para
                 poder orientarte y ofrecerte una solución a la medida.
             </h1>
-            <div class=" origin-center mt-10 text-[var(--blue-1)]">
-                <h1 class="w-full text-center">Consulta las condiciones de los planes DOCVISUAL.
-                </h1>
+            
+            <div class="origin-center mt-10 text-[var(--blue-1)]">
                 <h1 class="w-full text-center">Contrato mínimo 3 meses para lograr resultados.</h1>
             </div>
-            <h1 class="w-full text-center mt-10 text-[var(--blue-1)] cursor-pointer" @click="goToTerms">Consulta las
-                condiciones de los planes DOCVISUAL</h1>
+            
+            <h1 class="w-full text-center mt-10 text-[var(--blue-1)] cursor-pointer hover:underline" @click="goToTerms">
+                Consulta las condiciones de los planes DOCVISUAL
+            </h1>
         </div>
     </div>
 </template>

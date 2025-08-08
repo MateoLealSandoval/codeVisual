@@ -46,6 +46,29 @@ export class UsersController {
     );
   }
 
+  // Verificar estado de pago
+  @Get('payment-status/:userId')
+  async getPaymentStatus(@Param('userId') userId: string) {
+    return this.client.send('get.payment.status', userId);
+  }
+
+  // Verificar pago con Epayco
+  @Post('verify-payment')
+  async verifyPayment(@Body() data: any) {
+    // Por ahora simulamos verificación exitosa
+    // En producción, aquí deberías verificar con la API de Epayco
+    return { 
+      success: true, 
+      userName: 'Usuario',
+      message: 'Pago verificado correctamente'
+    };
+  }
+
+  // Activar profesional después del pago
+  @Post('activate-professional')
+  async activateProfessional(@Body() data: any) {
+    return this.client.send('activate.professional', data);
+  }
 
 }
 

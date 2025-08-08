@@ -239,4 +239,100 @@ export class UsersService extends PrismaClient implements OnModuleInit {
   async exampleUserdata() {
     return "example module modifier"
   }
+
+  // Obtener estado de pago
+  async getPaymentStatus(userId: string) {
+    try {
+      const user = await this.prisma.userData.findUnique({
+        where: { id: userId },
+        select: {
+          payment_status: true,
+          plan_type: true,
+          payment_date: true,
+          expiration_date: true
+        }
+      });
+      
+      if (!user) {
+        return {
+          hasPaid: false,
+          isActive: false
+        };
+      }
+      
+      const now = new Date();
+      const isActive = user.expiration_date ? new Date(user.expiration_date) > now : false;
+      
+      return {
+        hasPaid: user.payment_status === 'PAID',
+        planType: user.plan_type,
+        paymentDate: user.payment_date,
+        expirationDate: user.expiration_date,
+        isActive: isActive
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Error obteniendo estado de pago'
+      });
+    }
+  }
+
+  // Activar cuenta profesional
+  async activateProfessional(data: {
+    userId: string;
+    planType: string;
+    transactionRef: string;
+  }) {
+    try {
+      const { userId, planType, transactionRef } = data;
+      
+      // Calcular fecha de expiración (30 días)
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 30);
+      
+      // Actualizar usuario
+      await this.prisma.userData.update({
+        where: { id: userId },
+        data: {
+          payment_status: 'PAID',
+          plan_type: planType,
+          payment_date: new Date(),
+          expiration_date: expirationDate,
+          profile_approved: true
+        }
+      });
+      
+      // Guardar transacción
+      await this.prisma.paymentTransaction.create({
+        data: {
+          user_id: userId,
+          amount: this.getPlanAmount(planType),
+          plan_type: planType,
+          transaction_ref: transactionRef,
+          status: 'APPROVED'
+        }
+      });
+      
+      return { 
+        success: true,
+        message: 'Profesional activado correctamente'
+      };
+    } catch (error) {
+      throw new RpcException({
+        status: 400,
+        message: error.message || 'Error activando profesional'
+      });
+    }
+  }
+
+  // Helper para obtener monto del plan
+  private getPlanAmount(planType: string): number {
+    const amounts = {
+      'BASIC': 178500,
+      'STANDARD': 214200,
+      'PREMIUM': 297500
+    };
+    return amounts[planType] || 0;
+  }
 }

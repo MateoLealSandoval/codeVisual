@@ -1,21 +1,32 @@
 <script setup lang="ts">
 import Navbar from '@/Modules/Home/Navbar.vue';
 import Footer from '@/Modules/Home/Footer.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import Swal from "sweetalert2";
+
 const formType = ref<'contact' | 'pqrs'>('contact');
 
 const fullName = ref('');
 const email = ref('');
 const subject = ref('');
 const message = ref('');
+
 interface SendEmailsDto {
     names: string;
     email: string;
     subject: string;
     text: string;
 }
+
+// Al montar, verificar si venimos del footer con PQRS
+onMounted(() => {
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab === 'pqrs') {
+        formType.value = 'pqrs';
+        localStorage.removeItem('activeTab'); // Limpiar después de usar
+    }
+});
 
 async function sendContact() {
     try {
@@ -26,7 +37,7 @@ async function sendContact() {
             subject: type + subject.value,
             text: message.value
         };
-        // Aquí puedes agregar la lógica para enviar el formulario
+        
         const response = await axios.post('/emails/send-email-all', sendData);
 
         Swal.fire({
@@ -36,6 +47,7 @@ async function sendContact() {
             confirmButtonText: 'OK',
             confirmButtonColor: "var(--blue-1)"
         });
+        
         // Resetear los campos después de enviar
         fullName.value = '';
         email.value = '';
@@ -49,9 +61,8 @@ async function sendContact() {
             confirmButtonText: 'OK',
             confirmButtonColor: "var(--blue-1)"
         });
-
     }
-    }
+}
 </script>
 
 <template>
@@ -65,12 +76,12 @@ async function sendContact() {
         <div class="flex-grow">
             <div class="container flex mx-auto py-20">
                 <div class="w-[20%]">
-                    <div class="rounded-xl mt-8 mb-5" @click="formType = 'contact'"
+                    <div class="rounded-xl mt-8 mb-5 cursor-pointer" @click="formType = 'contact'"
                         :style="{ backgroundColor: formType === 'contact' ? 'var(--blue-1)' : '#b2b2b2' }">
                         <h1 class="w-full text-center py-2 font-semibold text-white">CONTÁCTENOS</h1>
                     </div>
 
-                    <div class="rounded-xl" @click="formType = 'pqrs'"
+                    <div class="rounded-xl cursor-pointer" @click="formType = 'pqrs'"
                         :style="{ backgroundColor: formType === 'pqrs' ? 'var(--blue-1)' : '#b2b2b2' }">
                         <h1 class="w-full text-center py-2 font-semibold text-white">PQRS</h1>
                     </div>
@@ -79,9 +90,11 @@ async function sendContact() {
                 <div class="w-[75%]">
                     <div class="w-[90%] mx-auto bg-white rounded-2xl">
                         <div class="w-[90%] mx-auto">
-                            <h1 class="text-3xl text-[var(--blue-1)] font-bold my-3 pt-10">{{ formType === 'contact' ?
-                                "Contáctenos" : "PQRS" }} </h1>
+                            <h1 class="text-3xl text-[var(--blue-1)] font-bold my-3 pt-10">
+                                {{ formType === 'contact' ? "Contáctenos" : "PQRS" }}
+                            </h1>
                             <p>Uno de nuestros agentes responderá su solicitud en el menor tiempo posible</p>
+                            
                             <div class="flex w-full mt-3">
                                 <div class="w-[50%]">
                                     <div class="mb-3 w-[95%] mr-auto">
@@ -91,19 +104,22 @@ async function sendContact() {
                                 </div>
                                 <div class="w-[50%]">
                                     <div class="mb-3 w-[90%] ml-auto">
-                                        <input v-model="email" type="text" placeholder="Email"
+                                        <input v-model="email" type="email" placeholder="Email"
                                             class="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-200 rounded-md focus:border-blue-400 focus:ring-blue-300 focus:ring-opacity-40 focus:outline-none focus:ring">
                                     </div>
                                 </div>
                             </div>
+                            
                             <div class="mb-5 w-full">
                                 <input v-model="subject" type="text" placeholder="Asunto"
-                                class="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-200 rounded-md focus:border-blue-400 focus:ring-blue-300 focus:ring-opacity-40 focus:outline-none focus:ring">
+                                    class="block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-200 rounded-md focus:border-blue-400 focus:ring-blue-300 focus:ring-opacity-40 focus:outline-none focus:ring">
                             </div>
+                            
                             <div class="mb-5 w-full pb-10">
                                 <textarea v-model="message" placeholder="Tu mensaje" rows="4"
                                     class="resize-none block w-full px-4 py-2 mt-2 text-gray-700 bg-white border border-gray-200 rounded-md focus:border-blue-400 focus:ring-blue-300 focus:ring-opacity-40 focus:outline-none focus:ring"></textarea>
                             </div>
+                            
                             <div class="w-full pb-3">
                                 <div class="w-[90%] bg-[var(--blue-1)] rounded-lg mx-auto mb-10">
                                     <button @click="sendContact"

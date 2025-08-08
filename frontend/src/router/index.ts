@@ -21,7 +21,22 @@ import Reset_Password from '@/Modules/reset_password/Reset_Password.vue';
 import Confirmation from '@/Modules/confirmation/Confirmation.vue';
 import PanelAdmin from '@/views/panelAdmin/PanelAdmin.vue';
 import Services from '@/views/services/Services.vue';
+import adminProfessionals from '@/views/Admin/AdminProfessionals.vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
 const route = import.meta.env.BASE_URL || "http://localhost:8080";
+
+// Función para verificar estado de pago
+async function checkPaymentStatus(userId: string): Promise<boolean> {
+  try {
+    const response = await axios.get(`/users/payment-status/${userId}`);
+    return response.data.hasPaid && response.data.isActive;
+  } catch (error) {
+    console.error('Error verificando estado de pago:', error);
+    return false;
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(route),
@@ -70,19 +85,17 @@ const router = createRouter({
       path: '/blogs/:id',
       name: 'BlogDetail',
       component: Blog_Detail,
-      props: true // Esto permite pasar el parámetro como prop
+      props: true
     },
     {
       path: '/auth',
       name: 'auth',
       component: Auth,
-
     },
     {
       path: '/auth-professional',
       name: 'authParthner',
       component: AuthPartner,
-
     },
     {
       path: '/contact',
@@ -93,18 +106,19 @@ const router = createRouter({
       path: '/specialists',
       name: 'specialists',
       component: Specialists,
-
-    }, {
+    },
+    {
       path: '/specialist/:id',
       name: 'specialistdetail',
       component: SpecialistDetail,
-      props: true // Esto permite pasar el parámetro como prop
-
-    }, {
+      props: true
+    },
+    {
       path: '/planes',
       name: 'planes',
       component: Price
-    }, {
+    },
+    {
       path: '/purpose',
       name: 'purpose',
       component: Purpose
@@ -133,30 +147,50 @@ const router = createRouter({
       component: Payment
     },
     {
-      path:'/services',
-      name:'services',
-      component:Services
+      path: '/services',
+      name: 'services',
+      component: Services
+    },
+    {
+      path: '/admin/profesionales',
+      name: 'adminProfessionals',
+      component: adminProfessionals,
+      meta: { requiresAdmin: true, requiresAuth: true }
     }
-
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const isAuthenticated = !!authStore.token;
   const role = authStore.user?.role;
 
-  // 🔒 Si no está autenticado y la ruta requiere autenticación
+  // Si no está autenticado y la ruta requiere autenticación
   if (to.meta.requiresAuth && !isAuthenticated) {
     return next("/auth");
   }
 
-  // 🛡 Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
+  // Solo ADMIN y SUPER_ADMIN pueden entrar a /paneladmin
   if (to.name === "paneladmin" && !(role === "SUPER_ADMIN" || role === "ADMIN")) {
     return next("/");
   }
 
-  // 🧭 Si va a /auth y ya está autenticado → redirigir al panel según el rol
+  // Verificar pago para profesionales antes de acceder al panel
+  if (to.name === "paneluser" && role === "USER_PARTNER") {
+    const hasPaid = await checkPaymentStatus(authStore.user?.id || '');
+    if (!hasPaid) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Plan Requerido',
+        text: 'Necesitas adquirir un plan para acceder a tu panel profesional',
+        confirmButtonText: 'Ver Planes',
+        confirmButtonColor: 'var(--blue-1)'
+      });
+      return next("/planes");
+    }
+  }
+
+  // Si va a /auth y ya está autenticado → redirigir al panel según el rol
   if (to.name === "auth" && isAuthenticated) {
     if (role === "USER") return next("/accountuser");
     if (role === "USER_PARTNER") return next("/paneluser");
@@ -168,12 +202,8 @@ router.beforeEach((to, from, next) => {
     if (role === "USER_PARTNER") return next("/paneluser");
     if (role === "ADMIN" || role === "SUPER_ADMIN") return next("/paneladmin");
   }
+  
   next();
 });
 
-
-
-
-
 export default router
-// meta: { requiresAuth: true }

@@ -26,4 +26,14 @@ export class UsersController {
   Get_data_user_id(@Payload() { id }: { id: string } ){
     return this.usersService.get_user_by_id(id)
   }
+
+  @MessagePattern('get.payment.status')
+  async getPaymentStatus(@Payload() userId: string) {
+    return this.usersService.getPaymentStatus(userId);
+  }
+
+  @MessagePattern('activate.professional')
+  async activateProfessional(@Payload() data: any) {
+    return this.usersService.activateProfessional(data);
+  }
 }
