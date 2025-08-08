@@ -165,6 +165,29 @@ export default {
                 };
                 try {
                     await this.store.userAuth(logindata);
+
+                    // ✅ Si el login fue exitoso, verificar si es admin
+            if (this.store.user?.role === 'ADMIN' || this.store.user?.role === 'SUPER_ADMIN') {
+                // 🚫 Si es admin, cerrar sesión inmediatamente y mostrar mensaje
+                await this.store.close_session();
+                
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Acceso Restringido',
+                    html: 'Este tipo de usuario debe acceder desde:<br><strong>Acceso a Especialistas</strong>',
+                    confirmButtonColor: blueColor,
+                    confirmButtonText: 'Ir a Especialistas',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.$router.push('/auth-professional');
+                    }
+                });
+                return;
+            }
+            
+            // ✅ Si no es admin, continuar normal
                     await Swal.fire({
                         icon: 'success',
                         title: 'Autenticación Completada',
